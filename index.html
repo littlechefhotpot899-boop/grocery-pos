@@ -66,6 +66,11 @@
       -ms-overflow-style: none;
       scrollbar-width: none;
     }
+    @media (max-width: 767px) {
+      input, select, textarea {
+        font-size: 16px !important;
+      }
+    }
   </style>
 </head>
 <body class="min-h-screen antialiased">
@@ -206,6 +211,9 @@
           <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
             <h3 id="labelRecentTx" class="text-sm font-bold text-slate-800">ប្រតិបត្តិការថ្មីៗ</h3>
             <div class="flex items-center gap-1.5">
+              <button type="button" id="toggleReorderBtn" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-bold text-slate-700 transition">
+                ↕ ឡើង/ចុះ
+              </button>
               <button type="button" id="exportExcelBtn" class="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-xs font-bold text-emerald-800 transition">
                 Excel
               </button>
@@ -402,7 +410,7 @@
       </div>
 
       <!-- Existing Categories List -->
-      <div id="catManagerList" class="divide-y divide-slate-100 max-h-60 overflow-y-auto"></div>
+      <div id="catManagerList" class="divide-y divide-slate-100"></div>
     </div>
   </div>
 
@@ -448,6 +456,44 @@
         </div>
       </div>
       <button type="button" id="saveDebtorBtn" class="w-full py-3 rounded-xl btn-emerald font-bold text-sm">រក្សាទុក</button>
+    </div>
+  </div>
+
+  <!-- MODAL: Add More Debt to Existing Debtor -->
+  <div id="addDebtModal" class="hidden fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl p-5 space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 id="addDebtModalTitle" class="text-base font-bold text-slate-900">បន្ថែមប្រាក់ជំពាក់</h3>
+          <p id="addDebtDebtorSummary" class="text-xs text-slate-500 mt-0.5 num-font"></p>
+        </div>
+        <button type="button" data-close-modal="addDebtModal" class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500">✕</button>
+      </div>
+      <input type="hidden" id="addDebtDebtorId" />
+      <div class="grid grid-cols-3 gap-2">
+        <div class="col-span-2">
+          <label id="labelAddDebtAmount" class="block text-xs font-bold text-slate-700 mb-1">ចំនួនប្រាក់ជំពាក់ថែម</label>
+          <input type="number" step="any" min="0" id="addDebtAmountInput" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-base font-bold num-font" />
+        </div>
+        <div>
+          <label id="labelAddDebtCurr" class="block text-xs font-bold text-slate-700 mb-1">រូបិយប័ណ្ណ</label>
+          <select id="addDebtCurrSelect" class="w-full px-2.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold num-font">
+            <option value="USD">$</option>
+            <option value="KHR">៛</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label id="labelAddDebtDate" class="block text-xs font-bold text-slate-700 mb-1">កាលបរិច្ឆេទ</label>
+          <input type="date" id="addDebtDateInput" class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm" />
+        </div>
+        <div>
+          <label id="labelAddDebtNote" class="block text-xs font-bold text-slate-700 mb-1">កំណត់ចំណាំ</label>
+          <input type="text" id="addDebtNoteInput" class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm" />
+        </div>
+      </div>
+      <button type="button" id="confirmAddDebtBtn" class="w-full py-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-sm">បញ្ជាក់ជំពាក់ថែម</button>
     </div>
   </div>
 
@@ -598,6 +644,9 @@
           paidLabel: 'សង',
           remainingLabel: 'នៅសល់',
           payBtn: '+ សង',
+          addDebtBtn: '+ ជំពាក់',
+          reorderBtn: '↕ ឡើង/ចុះ',
+          reorderDoneBtn: '✓ រួចរាល់',
           editBtn: 'កែប្រែ',
           deleteBtn: 'លុប',
           payModalTitle: 'កត់ត្រាការសង',
@@ -655,6 +704,9 @@
           paidLabel: 'Paid',
           remainingLabel: 'Remaining',
           payBtn: '+ Pay',
+          addDebtBtn: '+ Debt',
+          reorderBtn: '↕ Move',
+          reorderDoneBtn: '✓ Done',
           editBtn: 'Edit',
           deleteBtn: 'Delete',
           payModalTitle: 'Record Payment',
@@ -762,6 +814,7 @@ function writeTab(ss, name, headers, rows) {
         selectedCatId: 'cat_inc_1'
       };
       let debtorFilter = 'all';
+      let reorderMode = false;
       let tempCatImage = '';
       let expenseChartInstance = null;
 
@@ -890,6 +943,12 @@ function writeTab(ss, name, headers, rows) {
         document.getElementById('settingsTitle').textContent = t('settingsTitle');
         document.getElementById('cancelEditTxBtn').textContent = t('cancelEdit');
         document.getElementById('rateBadge').textContent = '1$ = ' + Number(state.settings.exchangeRate).toLocaleString() + '៛';
+        const rBtn = document.getElementById('toggleReorderBtn');
+        if (rBtn) {
+          rBtn.textContent = reorderMode ? t('reorderDoneBtn') : t('reorderBtn');
+          rBtn.className = 'px-2.5 py-1 rounded-lg border text-xs font-bold transition ' +
+            (reorderMode ? 'bg-[#138564] text-white border-[#138564]' : 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700');
+        }
 
         document.getElementById('langToggleBtn').textContent = state.lang === 'km' ? 'ខ្មែរ | EN' : 'EN | ខ្មែរ';
         document.getElementById('currencyToggleBtn').textContent = state.currency === 'USD' ? '$ | ៛' : '៛ | $';
@@ -932,7 +991,7 @@ function writeTab(ss, name, headers, rows) {
             const catName = cat ? (cat.nameKm + ' ' + cat.nameEn).toLowerCase() : '';
             return (tx.note || '').toLowerCase().includes(search) || catName.includes(search);
           })
-          .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+          ;
       }
 
       function renderDashboard() {
@@ -999,16 +1058,20 @@ function writeTab(ss, name, headers, rows) {
               iconHtml +
               '<div class="min-w-0">' +
                 '<div class="text-xs sm:text-sm font-bold text-slate-800 truncate">' + escapeHtml(catName) + '</div>' +
-                '<div class="text-[11px] text-slate-500 truncate">' + escapeHtml(tx.note || tx.date) + ' · <span class="num-font">' + tx.date + '</span></div>' +
+                '<div class="text-[11px] text-slate-500 truncate">' + escapeHtml(tx.note || normalizeSheetDate(tx.date)) + ' · <span class="num-font">' + normalizeSheetDate(tx.date) + '</span></div>' +
               '</div>' +
             '</div>' +
-            '<div class="flex items-center gap-2 shrink-0">' +
-              '<div class="text-right">' +
+            '<div class="flex items-center gap-1.5 shrink-0">' +
+              '<div class="text-right mr-1">' +
                 '<div class="text-xs sm:text-sm font-bold num-font ' + amtColor + '">' + amtSign + formatMoney(tx.amountUsd) + '</div>' +
                 '<div class="text-[10px] text-slate-400 num-font">' + formatSubMoney(tx.amountUsd) + '</div>' +
               '</div>' +
-              '<button type="button" data-edit-tx="' + tx.id + '" class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 text-xs">✎</button>' +
-              '<button type="button" data-del-tx="' + tx.id + '" class="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 text-xs">🗑</button>' +
+              (reorderMode
+                ? '<button type="button" data-move-up="' + tx.id + '" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center justify-center">▲</button>' +
+                  '<button type="button" data-move-down="' + tx.id + '" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center justify-center">▼</button>'
+                : '<button type="button" data-edit-tx="' + tx.id + '" class="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 text-xs flex items-center justify-center">✎</button>' +
+                  '<button type="button" data-del-tx="' + tx.id + '" class="w-8 h-8 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 text-xs flex items-center justify-center">🗑</button>'
+              ) +
             '</div>' +
           '</div>';
         }).join('');
@@ -1172,10 +1235,11 @@ function writeTab(ss, name, headers, rows) {
                 '<div class="text-sm sm:text-base font-bold text-slate-900">' + escapeHtml(d.name) + '</div>' +
                 '<div class="text-xs text-slate-500 num-font">' + escapeHtml(d.phone || '-') + ' · ' + escapeHtml(d.date || '') + '</div>' +
               '</div>' +
-              '<div class="flex items-center gap-1">' +
+              '<div class="flex items-center gap-1 flex-wrap justify-end">' +
+                '<button type="button" data-add-debt="' + d.id + '" class="px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-bold">' + t('addDebtBtn') + '</button>' +
                 (rem > 0.005 ? '<button type="button" data-pay-debtor="' + d.id + '" class="px-2.5 py-1 rounded-lg btn-emerald text-xs font-bold">' + t('payBtn') + '</button>' : '<span class="px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-800 text-[11px] font-bold">✓ ' + t('paid') + '</span>') +
-                '<button type="button" data-edit-debtor="' + d.id + '" class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 text-xs">✎</button>' +
-                '<button type="button" data-del-debtor="' + d.id + '" class="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 text-xs">🗑</button>' +
+                '<button type="button" data-edit-debtor="' + d.id + '" class="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-500 text-xs flex items-center justify-center">✎</button>' +
+                '<button type="button" data-del-debtor="' + d.id + '" class="w-8 h-8 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 text-xs flex items-center justify-center">🗑</button>' +
               '</div>' +
             '</div>' +
             '<div class="text-xs text-slate-600 num-font">' +
@@ -1226,8 +1290,8 @@ function writeTab(ss, name, headers, rows) {
               '</div>' +
             '</div>' +
             '<div class="flex items-center gap-1">' +
-              '<button type="button" data-edit-cat="' + c.id + '" class="px-2 py-1 rounded bg-slate-100 text-xs font-semibold text-slate-700">✎</button>' +
-              '<button type="button" data-del-cat="' + c.id + '" class="px-2 py-1 rounded bg-rose-50 text-xs font-semibold text-rose-600">🗑</button>' +
+              '<button type="button" data-edit-cat="' + c.id + '" class="w-9 h-9 rounded-lg bg-slate-100 active:bg-slate-200 text-sm font-semibold text-slate-700 flex items-center justify-center">✎</button>' +
+              '<button type="button" data-del-cat="' + c.id + '" class="w-9 h-9 rounded-lg bg-rose-50 active:bg-rose-100 text-sm font-semibold text-rose-600 flex items-center justify-center">🗑</button>' +
             '</div>' +
           '</div>';
         }).join('');
@@ -1523,8 +1587,31 @@ function writeTab(ss, name, headers, rows) {
         setView('dashboard');
       });
 
-      // Transaction list edit/delete delegation
+      document.getElementById('toggleReorderBtn').addEventListener('click', () => {
+        reorderMode = !reorderMode;
+        renderDashboard();
+      });
+
+      // Transaction list edit/delete/reorder delegation
       document.getElementById('txListContainer').addEventListener('click', (e) => {
+        const upBtn = e.target.closest('[data-move-up]');
+        const downBtn = e.target.closest('[data-move-down]');
+        if (upBtn || downBtn) {
+          const id = upBtn ? upBtn.dataset.moveUp : downBtn.dataset.moveDown;
+          const idx = state.transactions.findIndex(x => x.id === id);
+          if (idx > -1) {
+            const targetIdx = upBtn ? idx - 1 : idx + 1;
+            if (targetIdx >= 0 && targetIdx < state.transactions.length) {
+              const tmp = state.transactions[idx];
+              state.transactions[idx] = state.transactions[targetIdx];
+              state.transactions[targetIdx] = tmp;
+              saveState();
+              if (state.settings.autoSync) syncToGoogleSheets(true);
+              renderDashboard();
+            }
+          }
+          return;
+        }
         const editBtn = e.target.closest('[data-edit-tx]');
         const delBtn = e.target.closest('[data-del-tx]');
         if (editBtn) {
@@ -1575,6 +1662,7 @@ function writeTab(ss, name, headers, rows) {
           state.categories.push({ id: 'cat_' + Date.now(), type, nameKm, nameEn, emoji, color, image: tempCatImage });
         }
         saveState();
+        if (state.settings.autoSync) syncToGoogleSheets(true);
         resetCatForm();
         renderCatManagerList();
         if (state.activeView === 'add') renderAddEntry();
@@ -1600,9 +1688,12 @@ function writeTab(ss, name, headers, rows) {
           } else {
             document.getElementById('catImagePreviewWrap').classList.add('hidden');
           }
+          const modalBox = document.querySelector('#catModal > div');
+          if (modalBox) modalBox.scrollTo({ top: 0, behavior: 'smooth' });
         } else if (delBtn) {
           state.categories = state.categories.filter(x => x.id !== delBtn.dataset.delCat);
           saveState();
+          if (state.settings.autoSync) syncToGoogleSheets(true);
           renderCatManagerList();
           if (state.activeView === 'add') renderAddEntry();
         }
@@ -1654,7 +1745,44 @@ function writeTab(ss, name, headers, rows) {
         showToast(t('toastSaved'));
       });
 
+      document.getElementById('confirmAddDebtBtn').addEventListener('click', () => {
+        const id = document.getElementById('addDebtDebtorId').value;
+        const rawAmt = parseFloat(document.getElementById('addDebtAmountInput').value);
+        const curr = document.getElementById('addDebtCurrSelect').value;
+        const date = document.getElementById('addDebtDateInput').value || todayStr;
+        const note = document.getElementById('addDebtNoteInput').value.trim();
+        if (!rawAmt || rawAmt <= 0) { showToast(t('toastInvalidAmt')); return; }
+
+        const rate = state.settings.exchangeRate || 4000;
+        const addUsd = curr === 'USD' ? rawAmt : rawAmt / rate;
+        const d = state.debtors.find(x => x.id === id);
+        if (!d) return;
+
+        d.totalUsd = (Number(d.totalUsd) || 0) + addUsd;
+        d.date = date;
+        if (note) d.note = d.note ? (d.note + '; ' + note) : note;
+        saveState();
+        if (state.settings.autoSync) syncToGoogleSheets(true);
+        document.getElementById('addDebtModal').classList.add('hidden');
+        renderDebtors();
+        showToast(t('toastSaved'));
+      });
+
       document.getElementById('debtorsListContainer').addEventListener('click', (e) => {
+        const addDebtBtn = e.target.closest('[data-add-debt]');
+        if (addDebtBtn) {
+          const d = state.debtors.find(x => x.id === addDebtBtn.dataset.addDebt);
+          if (!d) return;
+          const rem = Math.max(0, (d.totalUsd || 0) - (d.paidUsd || 0));
+          document.getElementById('addDebtDebtorId').value = d.id;
+          document.getElementById('addDebtDebtorSummary').textContent = d.name + ' (' + t('remainingLabel') + ': ' + formatMoney(rem) + ')';
+          document.getElementById('addDebtAmountInput').value = '';
+          document.getElementById('addDebtCurrSelect').value = state.currency;
+          document.getElementById('addDebtDateInput').value = todayStr;
+          document.getElementById('addDebtNoteInput').value = '';
+          document.getElementById('addDebtModal').classList.remove('hidden');
+          return;
+        }
         const payBtn = e.target.closest('[data-pay-debtor]');
         const editBtn = e.target.closest('[data-edit-debtor]');
         const delBtn = e.target.closest('[data-del-debtor]');
