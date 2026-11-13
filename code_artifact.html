@@ -1,0 +1,1811 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="ចាប់ហួយ POS" />
+  <title>កត់ត្រាចំណូលចំណាយហាងចាប់ហួយ &amp; អ្នកជំពាក់លុយ</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Khmer:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <style>
+    :root {
+      --bg-app: #f3f5f7;
+      --navy-card: #0f1e36;
+      --emerald: #138564;
+      --emerald-dark: #0e6b50;
+    }
+    body {
+      font-family: 'Noto Sans Khmer', 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: var(--bg-app);
+      color: #0f172a;
+      -webkit-tap-highlight-color: transparent;
+      padding-bottom: 84px;
+    }
+    @media (min-width: 768px) {
+      body {
+        padding-bottom: 24px;
+      }
+    }
+    .num-font {
+      font-family: 'Inter', 'Noto Sans Khmer', sans-serif;
+      font-variant-numeric: tabular-nums;
+    }
+    .card-soft {
+      background: #ffffff;
+      border: 1px solid #e6ebf1;
+      box-shadow: 0 2px 10px rgba(15, 30, 54, 0.04);
+    }
+    .navy-balance-card {
+      background: linear-gradient(135deg, #0f1e36 0%, #172d50 100%);
+      box-shadow: 0 10px 24px rgba(15, 30, 54, 0.18);
+    }
+    .btn-emerald {
+      background-color: var(--emerald);
+      color: #ffffff;
+      transition: background-color 0.15s ease, transform 0.1s ease;
+    }
+    .btn-emerald:hover {
+      background-color: var(--emerald-dark);
+    }
+    .btn-emerald:active {
+      transform: scale(0.98);
+    }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="min-h-screen antialiased">
+
+  <!-- Top App Bar -->
+  <header class="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-200">
+    <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <div class="w-9 h-9 rounded-xl bg-[#0f1e36] text-white flex items-center justify-center text-lg shrink-0 shadow-sm">
+          🏪
+        </div>
+        <div class="min-w-0">
+          <h1 id="appTitle" class="text-sm sm:text-base font-bold text-slate-900 truncate">ហាងចាប់ហួយ</h1>
+          <div class="flex items-center gap-1.5 text-[11px] text-slate-500">
+            <span id="syncDot" class="inline-block w-2 h-2 rounded-full bg-slate-300"></span>
+            <span id="syncStatusText" class="truncate">រក្សាទុកក្នុងម៉ាស៊ីន</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Desktop Nav -->
+      <nav class="hidden md:flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+        <button type="button" data-nav="dashboard" class="nav-btn px-3.5 py-1.5 rounded-lg text-sm font-semibold transition"></button>
+        <button type="button" data-nav="add" class="nav-btn px-3.5 py-1.5 rounded-lg text-sm font-semibold transition"></button>
+        <button type="button" data-nav="debtors" class="nav-btn px-3.5 py-1.5 rounded-lg text-sm font-semibold transition"></button>
+      </nav>
+
+      <!-- Quick Controls: Lang, Currency, Settings -->
+      <div class="flex items-center gap-1.5 shrink-0">
+        <button type="button" id="langToggleBtn" class="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-700 transition">
+          ខ្មែរ | EN
+        </button>
+        <button type="button" id="currencyToggleBtn" class="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-emerald-700 transition num-font">
+          $ | ៛
+        </button>
+        <button type="button" id="openSettingsBtn" title="Google Sheets &amp; Settings" class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="max-w-5xl mx-auto px-4 pt-4 pb-6 space-y-4">
+
+    <!-- VIEW 1: DASHBOARD -->
+    <section id="view-dashboard" class="space-y-4">
+      <!-- Month Header & Sync Button -->
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="flex items-center gap-2">
+          <h2 id="dashHeading" class="text-lg sm:text-xl font-bold text-slate-900">ទិដ្ឋភាពប្រចាំខែ</h2>
+          <select id="monthFilter" class="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs sm:text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+          </select>
+        </div>
+        <button type="button" id="quickSyncBtn" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-xs font-semibold text-slate-700 transition">
+          <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          <span id="quickSyncLabel">សមកាលកម្ម Sheets</span>
+        </button>
+      </div>
+
+      <!-- Top Summary Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-3.5">
+        <!-- Net Balance Dark Navy Card -->
+        <div class="md:col-span-5 navy-balance-card rounded-2xl p-5 text-white flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between">
+              <span id="labelNetBalance" class="text-xs sm:text-sm text-slate-300 font-medium">សមតុល្យសុទ្ធ</span>
+              <span id="rateBadge" class="text-[11px] bg-white/10 px-2 py-0.5 rounded-full text-slate-200 num-font">1$ = 4,000៛</span>
+            </div>
+            <div id="netBalanceVal" class="text-3xl sm:text-4xl font-extrabold mt-2 tracking-tight num-font">$0.00</div>
+            <div id="netBalanceSub" class="text-xs text-slate-300 mt-1.5 num-font">0 ៛</div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-xs text-slate-300">
+            <span id="labelTotalDebtDash">អ្នកជំពាក់នៅសល់</span>
+            <span id="dashDebtTotal" class="font-bold text-amber-300 num-font">$0.00</span>
+          </div>
+        </div>
+
+        <!-- Income & Expense Cards + Budget -->
+        <div class="md:col-span-7 flex flex-col gap-3.5">
+          <div class="grid grid-cols-2 gap-3">
+            <div class="rounded-2xl p-4 bg-[#e6f5ef] border border-[#cdeadd]">
+              <div class="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-[#0f7a5a]">
+                <span>↗</span>
+                <span id="labelIncome">ចំណូល</span>
+              </div>
+              <div id="incomeTotalVal" class="text-xl sm:text-2xl font-extrabold text-[#0b6147] mt-1.5 num-font">+$0.00</div>
+              <div id="incomeTotalSub" class="text-[11px] text-[#0f7a5a]/80 mt-0.5 num-font">0 ប្រតិបត្តិការ</div>
+            </div>
+            <div class="rounded-2xl p-4 bg-[#fcece9] border border-[#f8d5ce]">
+              <div class="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-[#c53b2d]">
+                <span>↘</span>
+                <span id="labelExpense">ចំណាយ</span>
+              </div>
+              <div id="expenseTotalVal" class="text-xl sm:text-2xl font-extrabold text-[#a82e22] mt-1.5 num-font">-$0.00</div>
+              <div id="expenseTotalSub" class="text-[11px] text-[#c53b2d]/80 mt-0.5 num-font">0 ប្រតិបត្តិការ</div>
+            </div>
+          </div>
+
+          <!-- Monthly Budget Progress -->
+          <div class="card-soft rounded-2xl p-4">
+            <div class="flex items-center justify-between mb-2">
+              <span id="labelMonthlyBudget" class="text-xs sm:text-sm font-bold text-slate-800">កញ្ចប់ថវិកាប្រចាំខែ</span>
+              <button type="button" id="editBudgetBtn" class="text-xs font-semibold text-emerald-700 hover:underline"></button>
+            </div>
+            <div class="flex items-center justify-between text-xs sm:text-sm font-semibold mb-1.5 num-font">
+              <span id="budgetRatioText" class="text-emerald-700">$0 / $1,800</span>
+              <span id="budgetPercentText" class="text-slate-600">0%</span>
+            </div>
+            <div class="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+              <div id="budgetProgressBar" class="h-full bg-[#138564] rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chart & Recent Transactions -->
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+        <!-- Expense Donut Chart -->
+        <div class="md:col-span-5 card-soft rounded-2xl p-4">
+          <div class="flex items-center justify-between mb-3">
+            <h3 id="labelExpenseCatChart" class="text-sm font-bold text-slate-800">ប្រភេទចំណាយ</h3>
+            <span id="chartTotalTag" class="text-xs text-slate-500 num-font"></span>
+          </div>
+          <div class="relative h-52">
+            <canvas id="expenseChart"></canvas>
+          </div>
+          <div id="chartLegend" class="mt-3 grid grid-cols-2 gap-1.5 text-xs"></div>
+        </div>
+
+        <!-- Recent Transactions + Export -->
+        <div class="md:col-span-7 card-soft rounded-2xl p-4 flex flex-col">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <h3 id="labelRecentTx" class="text-sm font-bold text-slate-800">ប្រតិបត្តិការថ្មីៗ</h3>
+            <div class="flex items-center gap-1.5">
+              <button type="button" id="exportExcelBtn" class="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-xs font-bold text-emerald-800 transition">
+                Excel
+              </button>
+              <button type="button" id="exportCsvBtn" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-bold text-slate-700 transition">
+                CSV
+              </button>
+            </div>
+          </div>
+
+          <!-- Search & Type Filter -->
+          <div class="flex items-center gap-2 mb-3">
+            <input type="text" id="txSearchInput" class="flex-1 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+            <select id="txTypeFilter" class="px-2.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700">
+              <option value="all">ទាំងអស់</option>
+              <option value="income">ចំណូល</option>
+              <option value="expense">ចំណាយ</option>
+            </select>
+          </div>
+
+          <div id="txListContainer" class="divide-y divide-slate-100 max-h-96 overflow-y-auto pr-1"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 2: ADD ENTRY -->
+    <section id="view-add" class="hidden max-w-xl mx-auto">
+      <div class="card-soft rounded-2xl p-5 space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 id="addEntryHeading" class="text-lg font-bold text-slate-900">បញ្ចូលទិន្នន័យ</h2>
+          <button type="button" id="cancelEditTxBtn" class="hidden text-xs font-semibold text-rose-600 hover:underline"></button>
+        </div>
+
+        <!-- Income / Expense Segmented Toggle -->
+        <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-xl">
+          <button type="button" id="typeIncomeBtn" class="py-2.5 rounded-lg text-sm font-bold transition"></button>
+          <button type="button" id="typeExpenseBtn" class="py-2.5 rounded-lg text-sm font-bold transition"></button>
+        </div>
+
+        <!-- Amount Input Box -->
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4">
+          <div class="flex items-center justify-between mb-1">
+            <span id="labelAmountInput" class="text-xs font-semibold text-slate-500">ចំនួនទឹកប្រាក់</span>
+            <div class="inline-flex rounded-lg bg-white border border-slate-200 p-0.5 text-xs font-bold num-font">
+              <button type="button" id="entryUsdBtn" class="px-2.5 py-0.5 rounded-md transition">$</button>
+              <button type="button" id="entryKhrBtn" class="px-2.5 py-0.5 rounded-md transition">៛</button>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="entryCurrencySymbol" class="text-2xl font-extrabold text-slate-500 num-font">$</span>
+            <input type="number" step="any" min="0" id="entryAmountInput" placeholder="0.00" class="w-full bg-transparent text-3xl font-extrabold text-slate-900 focus:outline-none num-font" />
+          </div>
+          <div id="entryConvertedPreview" class="text-xs text-slate-500 mt-1 num-font">≈ 0 ៛</div>
+        </div>
+
+        <!-- Categories Grid -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span id="labelCategorySelect" class="text-xs sm:text-sm font-bold text-slate-800">ប្រភេទ</span>
+            <button type="button" id="openCatManagerBtn" class="text-xs font-semibold text-emerald-700 hover:underline flex items-center gap-1">
+              <span>✎</span>
+              <span id="labelEditCats">កែប្រែ</span>
+            </button>
+          </div>
+          <div id="categoryGrid" class="grid grid-cols-3 sm:grid-cols-4 gap-2.5"></div>
+        </div>
+
+        <!-- Date & Notes -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label for="entryDateInput" id="labelDateInput" class="block text-xs font-bold text-slate-700 mb-1">កាលបរិច្ឆេទ</label>
+            <input type="date" id="entryDateInput" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+          </div>
+          <div>
+            <label for="entryNoteInput" id="labelNoteInput" class="block text-xs font-bold text-slate-700 mb-1">កំណត់ចំណាំ</label>
+            <input type="text" id="entryNoteInput" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+          </div>
+        </div>
+
+        <!-- Save Button -->
+        <button type="button" id="saveTxBtn" class="w-full py-3.5 rounded-xl btn-emerald font-bold text-sm sm:text-base shadow-sm">
+          រក្សាទុក
+        </button>
+      </div>
+    </section>
+
+    <!-- VIEW 3: DEBTORS -->
+    <section id="view-debtors" class="hidden space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 id="debtorsHeading" class="text-lg sm:text-xl font-bold text-slate-900">អ្នកជំពាក់លុយ</h2>
+          <p id="debtorsSubSummary" class="text-xs text-slate-500 num-font"></p>
+        </div>
+        <button type="button" id="openAddDebtorBtn" class="px-4 py-2 rounded-xl btn-emerald text-xs sm:text-sm font-bold shadow-sm">
+          + បន្ថែម
+        </button>
+      </div>
+
+      <!-- Search & Status Filter -->
+      <div class="flex flex-wrap items-center gap-2">
+        <input type="text" id="debtorSearchInput" class="flex-1 min-w-[180px] px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+        <div class="inline-flex bg-white border border-slate-200 rounded-xl p-1 text-xs font-semibold">
+          <button type="button" data-debt-filter="all" class="debt-filter-btn px-3 py-1 rounded-lg"></button>
+          <button type="button" data-debt-filter="owing" class="debt-filter-btn px-3 py-1 rounded-lg"></button>
+          <button type="button" data-debt-filter="paid" class="debt-filter-btn px-3 py-1 rounded-lg"></button>
+        </div>
+      </div>
+
+      <div id="debtorsListContainer" class="grid grid-cols-1 md:grid-cols-2 gap-3.5"></div>
+    </section>
+
+  </main>
+
+  <!-- Mobile Bottom Navigation -->
+  <nav class="md:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-slate-200 px-4 py-2 flex items-center justify-around">
+    <button type="button" data-nav="dashboard" class="mob-nav-btn flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-xs font-semibold">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+      </svg>
+      <span class="mob-nav-label">ទិដ្ឋភាព</span>
+    </button>
+    <button type="button" data-nav="add" class="mob-nav-btn flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-xs font-semibold">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <span class="mob-nav-label">បន្ថែម</span>
+    </button>
+    <button type="button" data-nav="debtors" class="mob-nav-btn flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-xs font-semibold">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+      <span class="mob-nav-label">អ្នកជំពាក់</span>
+    </button>
+  </nav>
+
+  <!-- MODAL: Category Manager (Edit Category / Upload Image) -->
+  <div id="catModal" class="hidden fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl p-5 max-h-[90vh] overflow-y-auto space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 id="catModalTitle" class="text-base font-bold text-slate-900">គ្រប់គ្រងប្រភេទ &amp; រូបភាព</h3>
+        <button type="button" data-close-modal="catModal" class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500">✕</button>
+      </div>
+
+      <!-- Add/Edit Category Form -->
+      <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-3">
+        <input type="hidden" id="editCatId" />
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label id="labelCatType" class="block text-[11px] font-bold text-slate-600 mb-1">ប្រភេទ</label>
+            <select id="catFormType" class="w-full px-2.5 py-2 rounded-lg bg-white border border-slate-200 text-xs font-semibold">
+              <option value="income">ចំណូល (Income)</option>
+              <option value="expense">ចំណាយ (Expense)</option>
+            </select>
+          </div>
+          <div>
+            <label id="labelCatColor" class="block text-[11px] font-bold text-slate-600 mb-1">ពណ៌</label>
+            <input type="color" id="catFormColor" value="#138564" class="w-full h-9 rounded-lg border border-slate-200 bg-white cursor-pointer" />
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label id="labelCatNameKm" class="block text-[11px] font-bold text-slate-600 mb-1">ឈ្មោះ (ខ្មែរ)</label>
+            <input type="text" id="catFormNameKm" class="w-full px-2.5 py-2 rounded-lg bg-white border border-slate-200 text-xs" />
+          </div>
+          <div>
+            <label id="labelCatNameEn" class="block text-[11px] font-bold text-slate-600 mb-1">Name (EN)</label>
+            <input type="text" id="catFormNameEn" class="w-full px-2.5 py-2 rounded-lg bg-white border border-slate-200 text-xs" />
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2 items-end">
+          <div>
+            <label id="labelCatEmoji" class="block text-[11px] font-bold text-slate-600 mb-1">Emoji / Icon</label>
+            <input type="text" id="catFormEmoji" value="🛒" maxlength="4" class="w-full px-2.5 py-2 rounded-lg bg-white border border-slate-200 text-sm text-center" />
+          </div>
+          <div>
+            <label id="labelCatImage" class="block text-[11px] font-bold text-slate-600 mb-1">រូបភាពផ្ទាល់ខ្លួន</label>
+            <label class="flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-lg bg-white border border-dashed border-emerald-400 text-xs font-semibold text-emerald-700 cursor-pointer hover:bg-emerald-50">
+              <span>📷</span>
+              <span id="catImageUploadLabel">ជ្រើសរូបភាព</span>
+              <input type="file" id="catFormImageInput" accept="image/*" class="hidden" />
+            </label>
+          </div>
+        </div>
+        <div id="catImagePreviewWrap" class="hidden flex items-center justify-between bg-white p-2 rounded-lg border border-slate-200">
+          <div class="flex items-center gap-2">
+            <img id="catImagePreview" alt="Category" class="w-9 h-9 rounded-lg object-cover" />
+            <span class="text-xs text-slate-600">រូបភាពដែលបានជ្រើស</span>
+          </div>
+          <button type="button" id="clearCatImageBtn" class="text-xs text-rose-600 font-semibold hover:underline">លុបរូប</button>
+        </div>
+        <div class="flex gap-2">
+          <button type="button" id="saveCatBtn" class="flex-1 py-2 rounded-xl btn-emerald text-xs font-bold">រក្សាទុកប្រភេទ</button>
+          <button type="button" id="resetCatFormBtn" class="px-3 py-2 rounded-xl bg-slate-200 text-xs font-bold text-slate-700">សម្អាត</button>
+        </div>
+      </div>
+
+      <!-- Existing Categories List -->
+      <div id="catManagerList" class="divide-y divide-slate-100 max-h-60 overflow-y-auto"></div>
+    </div>
+  </div>
+
+  <!-- MODAL: Add / Edit Debtor -->
+  <div id="debtorModal" class="hidden fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl p-5 space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 id="debtorModalTitle" class="text-base font-bold text-slate-900">បន្ថែមអ្នកជំពាក់</h3>
+        <button type="button" data-close-modal="debtorModal" class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500">✕</button>
+      </div>
+      <input type="hidden" id="editDebtorId" />
+      <div class="space-y-3">
+        <div>
+          <label id="labelDebtorName" class="block text-xs font-bold text-slate-700 mb-1">ឈ្មោះអតិថិជន</label>
+          <input type="text" id="debtorNameInput" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm" />
+        </div>
+        <div>
+          <label id="labelDebtorPhone" class="block text-xs font-bold text-slate-700 mb-1">លេខទូរស័ព្ទ</label>
+          <input type="tel" id="debtorPhoneInput" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm num-font" />
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+          <div class="col-span-2">
+            <label id="labelDebtorAmount" class="block text-xs font-bold text-slate-700 mb-1">ចំនួនទឹកប្រាក់ជំពាក់</label>
+            <input type="number" step="any" min="0" id="debtorAmountInput" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold num-font" />
+          </div>
+          <div>
+            <label id="labelDebtorCurr" class="block text-xs font-bold text-slate-700 mb-1">រូបិយប័ណ្ណ</label>
+            <select id="debtorCurrSelect" class="w-full px-2.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold num-font">
+              <option value="USD">USD ($)</option>
+              <option value="KHR">KHR (៛)</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label id="labelDebtorDate" class="block text-xs font-bold text-slate-700 mb-1">កាលបរិច្ឆេទ</label>
+            <input type="date" id="debtorDateInput" class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs" />
+          </div>
+          <div>
+            <label id="labelDebtorNote" class="block text-xs font-bold text-slate-700 mb-1">កំណត់ចំណាំ</label>
+            <input type="text" id="debtorNoteInput" class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs" />
+          </div>
+        </div>
+      </div>
+      <button type="button" id="saveDebtorBtn" class="w-full py-3 rounded-xl btn-emerald font-bold text-sm">រក្សាទុក</button>
+    </div>
+  </div>
+
+  <!-- MODAL: Record Debt Payment -->
+  <div id="payModal" class="hidden fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl p-5 space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 id="payModalTitle" class="text-base font-bold text-slate-900">កត់ត្រាការសង</h3>
+          <p id="payDebtorSummary" class="text-xs text-slate-500 mt-0.5 num-font"></p>
+        </div>
+        <button type="button" data-close-modal="payModal" class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500">✕</button>
+      </div>
+      <input type="hidden" id="payDebtorId" />
+      <div class="grid grid-cols-3 gap-2">
+        <div class="col-span-2">
+          <label id="labelPayAmount" class="block text-xs font-bold text-slate-700 mb-1">ចំនួនប្រាក់</label>
+          <input type="number" step="any" min="0" id="payAmountInput" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-base font-bold num-font" />
+        </div>
+        <div>
+          <label id="labelPayCurr" class="block text-xs font-bold text-slate-700 mb-1">រូបិយប័ណ្ណ</label>
+          <select id="payCurrSelect" class="w-full px-2.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold num-font">
+            <option value="USD">$</option>
+            <option value="KHR">៛</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label id="labelPayDate" class="block text-xs font-bold text-slate-700 mb-1">កាលបរិច្ឆេទ</label>
+        <input type="date" id="payDateInput" class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm" />
+      </div>
+      <label class="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer">
+        <span id="labelPayAsIncome" class="text-xs sm:text-sm font-semibold text-slate-800">បញ្ចូលជាចំណូល</span>
+        <input type="checkbox" id="payAsIncomeCheck" checked class="w-4 h-4 accent-[#138564]" />
+      </label>
+      <button type="button" id="confirmPayBtn" class="w-full py-3 rounded-xl btn-emerald font-bold text-sm">បញ្ជាក់ការសង</button>
+    </div>
+  </div>
+
+  <!-- MODAL: Google Sheets Sync & Settings -->
+  <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl p-5 max-h-[90vh] overflow-y-auto space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 id="settingsTitle" class="text-base font-bold text-slate-900">ការកំណត់ &amp; Google Sheets</h3>
+        <button type="button" data-close-modal="settingsModal" class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500">✕</button>
+      </div>
+
+      <!-- Rate & Budget -->
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label id="labelExchangeRate" class="block text-xs font-bold text-slate-700 mb-1">អត្រាប្តូរប្រាក់ (1$ = ? ៛)</label>
+          <input type="number" id="settingRateInput" class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold num-font" />
+        </div>
+        <div>
+          <label id="labelBudgetLimit" class="block text-xs font-bold text-slate-700 mb-1">ថវិកាប្រចាំខែ ($)</label>
+          <input type="number" id="settingBudgetInput" class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold num-font" />
+        </div>
+      </div>
+
+      <!-- Google Sheets Web App URL -->
+      <div class="bg-emerald-50/60 border border-emerald-200 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <span id="labelSheetsSyncTitle" class="text-sm font-bold text-emerald-900">ភ្ជាប់ Google Sheets (iPhone &amp; PC)</span>
+          <span class="text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold">Apps Script</span>
+        </div>
+        <input type="url" id="settingSheetsUrlInput" placeholder="https://script.google.com/macros/s/.../exec" class="w-full px-3 py-2 rounded-xl bg-white border border-emerald-200 text-xs num-font focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+        <label class="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
+          <input type="checkbox" id="settingAutoSyncCheck" class="w-4 h-4 accent-[#138564]" />
+          <span id="labelAutoSync">សមកាលកម្មស្វ័យប្រវត្តិពេលកត់ត្រា</span>
+        </label>
+        <div class="grid grid-cols-2 gap-2">
+          <button type="button" id="pushSheetsBtn" class="py-2 rounded-xl btn-emerald text-xs font-bold">↑ រុញទៅ Google Sheets</button>
+          <button type="button" id="pullSheetsBtn" class="py-2 rounded-xl bg-white border border-emerald-300 hover:bg-emerald-50 text-xs font-bold text-emerald-800">↓ ទាញពី Google Sheets</button>
+        </div>
+
+        <!-- Expandable Apps Script Code -->
+        <details class="bg-white rounded-xl border border-emerald-200 p-3 text-xs">
+          <summary id="labelScriptGuideSummary" class="font-bold text-emerald-900 cursor-pointer">របៀបបង្កើត Google Sheets Script (ចុចមើល)</summary>
+          <ol id="scriptStepsList" class="list-decimal pl-4 mt-2 space-y-1 text-slate-600 leading-relaxed">
+            <li>បង្កើត Google Sheet ថ្មីមួយ។</li>
+            <li>ចុច <b>Extensions &gt; Apps Script</b>។</li>
+            <li>ចម្លងកូដខាងក្រោមទៅដាក់ជំនួសកូដចាស់ រួចចុច Save។</li>
+            <li>ចុច <b>Deploy &gt; New deployment &gt; Web app</b> (Execute as: <b>Me</b>, Who has access: <b>Anyone</b>) រួច Copy URL មកដាក់ខាងលើ។</li>
+          </ol>
+          <button type="button" id="copyAppsScriptBtn" class="mt-2.5 w-full py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs">
+            📋 ចម្លងកូដ Google Apps Script (Code.gs)
+          </button>
+        </details>
+      </div>
+
+      <!-- Save Settings + JSON Backup -->
+      <div class="flex flex-wrap gap-2">
+        <button type="button" id="saveSettingsBtn" class="flex-1 py-2.5 rounded-xl btn-emerald text-xs sm:text-sm font-bold">រក្សាទុកការកំណត់</button>
+        <button type="button" id="exportJsonBtn" class="px-3 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700">Backup JSON</button>
+        <label class="px-3 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 cursor-pointer">
+          Restore
+          <input type="file" id="importJsonInput" accept=".json" class="hidden" />
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toastEl" class="hidden fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs sm:text-sm font-semibold shadow-lg transition-opacity"></div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      const STORAGE_KEY = 'grocery_pos_kh_v1';
+
+      const I18N = {
+        km: {
+          appTitle: 'ហាងចាប់ហួយ',
+          navDashboard: 'ទិដ្ឋភាព',
+          navAdd: 'បន្ថែម',
+          navDebtors: 'អ្នកជំពាក់',
+          dashHeading: 'ទិដ្ឋភាពប្រចាំខែ',
+          quickSync: 'សមកាលកម្ម Sheets',
+          netBalance: 'សមតុល្យសុទ្ធ',
+          totalDebtDash: 'អ្នកជំពាក់នៅសល់',
+          income: 'ចំណូល',
+          expense: 'ចំណាយ',
+          txCountSuffix: 'ប្រតិបត្តិការ',
+          monthlyBudget: 'កញ្ចប់ថវិកាប្រចាំខែ',
+          editBudget: 'កែប្រែ',
+          expenseCats: 'ប្រភេទចំណាយ',
+          recentTx: 'ប្រតិបត្តិការថ្មីៗ',
+          searchTxPlaceholder: 'ស្វែងរកប្រតិបត្តិការ...',
+          all: 'ទាំងអស់',
+          owing: 'នៅជំពាក់',
+          paid: 'សងរួច',
+          addEntryHeading: 'បញ្ចូលទិន្នន័យ',
+          editEntryHeading: 'កែប្រែទិន្នន័យ',
+          cancelEdit: 'បោះបង់ការកែប្រែ',
+          amount: 'ចំនួនទឹកប្រាក់',
+          category: 'ប្រភេទ',
+          editCats: 'កែប្រែ',
+          addMore: 'បន្ថែម',
+          date: 'កាលបរិច្ឆេទ',
+          note: 'កំណត់ចំណាំ',
+          notePlaceholder: 'ឧ. ទិញទឹកសុទ្ធថែមស្តុក...',
+          save: 'រក្សាទុក',
+          debtorsHeading: 'អ្នកជំពាក់លុយ',
+          addDebtorBtn: '+ បន្ថែម',
+          searchDebtorPlaceholder: 'ស្វែងរកឈ្មោះ ឬ លេខទូរស័ព្ទ...',
+          totalLabel: 'សរុប',
+          paidLabel: 'សង',
+          remainingLabel: 'នៅសល់',
+          payBtn: '+ សង',
+          editBtn: 'កែប្រែ',
+          deleteBtn: 'លុប',
+          payModalTitle: 'កត់ត្រាការសង',
+          payAsIncome: 'បញ្ចូលជាចំណូល',
+          confirmPay: 'បញ្ជាក់ការសង',
+          catModalTitle: 'គ្រប់គ្រងប្រភេទ & រូបភាព',
+          settingsTitle: 'ការកំណត់ & Google Sheets',
+          savedLocal: 'រក្សាទុកក្នុងម៉ាស៊ីន',
+          syncedCloud: 'បានភ្ជាប់ Google Sheets',
+          syncing: 'កំពុងសមកាលកម្ម...',
+          noData: 'មិនទាន់មានទិន្នន័យទេ',
+          toastSaved: 'បានរក្សាទុកដោយជោគជ័យ!',
+          toastDeleted: 'បានលុបទិន្នន័យ!',
+          toastCopied: 'បានចម្លងកូដ Apps Script!',
+          toastInvalidAmt: 'សូមបញ្ចូលចំនួនទឹកប្រាក់ត្រឹមត្រូវ!',
+          toastNeedUrl: 'សូមបញ្ចូល Google Apps Script URL ក្នុងការកំណត់ជាមុន!',
+          toastSyncOk: 'សមកាលកម្មជាមួយ Google Sheets ជោគជ័យ!',
+          toastSyncErr: 'មិនអាចភ្ជាប់ Google Sheets បានទេ សូមពិនិត្យ URL!'
+        },
+        en: {
+          appTitle: 'Grocery Shop POS',
+          navDashboard: 'Dashboard',
+          navAdd: 'Add Entry',
+          navDebtors: 'Debtors',
+          dashHeading: 'Monthly Overview',
+          quickSync: 'Sync Sheets',
+          netBalance: 'Net Balance',
+          totalDebtDash: 'Total Receivables',
+          income: 'Income',
+          expense: 'Expense',
+          txCountSuffix: 'entries',
+          monthlyBudget: 'Monthly Budget',
+          editBudget: 'Edit',
+          expenseCats: 'Expense Categories',
+          recentTx: 'Recent Transactions',
+          searchTxPlaceholder: 'Search transactions...',
+          all: 'All',
+          owing: 'Owing',
+          paid: 'Paid',
+          addEntryHeading: 'Add Entry',
+          editEntryHeading: 'Edit Entry',
+          cancelEdit: 'Cancel Edit',
+          amount: 'Amount',
+          category: 'Category',
+          editCats: 'Edit',
+          addMore: 'Add',
+          date: 'Date',
+          note: 'Notes',
+          notePlaceholder: 'e.g. Restock drinks & snacks...',
+          save: 'Save',
+          debtorsHeading: 'Debtors',
+          addDebtorBtn: '+ Add',
+          searchDebtorPlaceholder: 'Search name or phone...',
+          totalLabel: 'Total',
+          paidLabel: 'Paid',
+          remainingLabel: 'Remaining',
+          payBtn: '+ Pay',
+          editBtn: 'Edit',
+          deleteBtn: 'Delete',
+          payModalTitle: 'Record Payment',
+          payAsIncome: 'Record as Income',
+          confirmPay: 'Confirm Payment',
+          catModalTitle: 'Manage Categories & Images',
+          settingsTitle: 'Settings & Google Sheets',
+          savedLocal: 'Saved locally',
+          syncedCloud: 'Google Sheets connected',
+          syncing: 'Syncing...',
+          noData: 'No records found',
+          toastSaved: 'Saved successfully!',
+          toastDeleted: 'Deleted!',
+          toastCopied: 'Apps Script code copied!',
+          toastInvalidAmt: 'Please enter a valid amount!',
+          toastNeedUrl: 'Please enter your Google Apps Script URL in Settings first!',
+          toastSyncOk: 'Synced with Google Sheets!',
+          toastSyncErr: 'Could not reach Google Sheets. Check your URL!'
+        }
+      };
+
+      const APPS_SCRIPT_CODE = `function doGet(e) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheets = ['Transactions', 'Debtors', 'Categories', 'Settings'];
+  var result = {};
+  sheets.forEach(function(name) {
+    var sheet = ss.getSheetByName(name);
+    if (!sheet) { result[name.toLowerCase()] = []; return; }
+    var values = sheet.getDataRange().getValues();
+    if (values.length < 2) { result[name.toLowerCase()] = []; return; }
+    var headers = values[0];
+    result[name.toLowerCase()] = values.slice(1).map(function(row) {
+      var obj = {};
+      headers.forEach(function(h, i) { obj[h] = row[i]; });
+      return obj;
+    });
+  });
+  return ContentService.createTextOutput(JSON.stringify({ ok: true, data: result }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e) {
+  var payload = JSON.parse(e.postData.contents);
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  writeTab(ss, 'Transactions', ['id','type','amountUsd','originalAmount','originalCurrency','categoryId','date','note'], payload.transactions || []);
+  writeTab(ss, 'Debtors', ['id','name','phone','totalUsd','paidUsd','date','note','paymentsJson'], (payload.debtors || []).map(function(d) {
+    return { id: d.id, name: d.name, phone: d.phone, totalUsd: d.totalUsd, paidUsd: d.paidUsd, date: d.date, note: d.note, paymentsJson: JSON.stringify(d.payments || []) };
+  }));
+  writeTab(ss, 'Categories', ['id','type','nameKm','nameEn','emoji','color','image'], payload.categories || []);
+  writeTab(ss, 'Settings', ['key','value'], [
+    { key: 'exchangeRate', value: payload.settings.exchangeRate },
+    { key: 'monthlyBudgetUsd', value: payload.settings.monthlyBudgetUsd }
+  ]);
+  return ContentService.createTextOutput(JSON.stringify({ ok: true, updatedAt: new Date().toISOString() }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function writeTab(ss, name, headers, rows) {
+  var sheet = ss.getSheetByName(name) || ss.insertSheet(name);
+  sheet.clearContents();
+  sheet.appendRow(headers);
+  if (rows.length > 0) {
+    var matrix = rows.map(function(r) { return headers.map(function(h) { return r[h] !== undefined ? r[h] : ''; }); });
+    sheet.getRange(2, 1, matrix.length, headers.length).setValues(matrix);
+  }
+}`;
+
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const currentMonthStr = todayStr.slice(0, 7);
+
+      const DEFAULT_STATE = {
+        lang: 'km',
+        currency: 'USD',
+        activeView: 'dashboard',
+        selectedMonth: currentMonthStr,
+        settings: {
+          exchangeRate: 4000,
+          monthlyBudgetUsd: 1800,
+          sheetsUrl: '',
+          autoSync: false
+        },
+        categories: [
+          { id: 'cat_inc_1', type: 'income', nameKm: 'លក់ចាប់ហួយ', nameEn: 'Grocery Sales', emoji: '🛒', color: '#138564', image: '' },
+          { id: 'cat_inc_2', type: 'income', nameKm: 'លក់ភេសជ្ជៈ', nameEn: 'Beverages', emoji: '🥤', color: '#0ea5e9', image: '' },
+          { id: 'cat_inc_3', type: 'income', nameKm: 'សងបំណុល', nameEn: 'Debt Repayment', emoji: '💵', color: '#10b981', image: '' },
+          { id: 'cat_inc_4', type: 'income', nameKm: 'ចំណូលផ្សេងៗ', nameEn: 'Other Income', emoji: '📒', color: '#6366f1', image: '' },
+          { id: 'cat_exp_1', type: 'expense', nameKm: 'ទិញទំនិញចូល', nameEn: 'Restock Goods', emoji: '📦', color: '#f59e0b', image: '' },
+          { id: 'cat_exp_2', type: 'expense', nameKm: 'ទឹក/ភ្លើង', nameEn: 'Utilities', emoji: '⚡', color: '#3b82f6', image: '' },
+          { id: 'cat_exp_3', type: 'expense', nameKm: 'ដឹកជញ្ជូន', nameEn: 'Delivery', emoji: '🛵', color: '#8b5cf6', image: '' },
+          { id: 'cat_exp_4', type: 'expense', nameKm: 'ចំណាយផ្សេងៗ', nameEn: 'Other Expense', emoji: '🧾', color: '#ef4444', image: '' }
+        ],
+        transactions: [
+          { id: 'tx_1', type: 'income', amountUsd: 185.50, originalAmount: 185.50, originalCurrency: 'USD', categoryId: 'cat_inc_1', date: todayStr, note: 'ចំណូលលក់ប្រចាំថ្ងៃ' },
+          { id: 'tx_2', type: 'income', amountUsd: 62.00, originalAmount: 248000, originalCurrency: 'KHR', categoryId: 'cat_inc_2', date: todayStr, note: 'លក់ភេសជ្ជៈ & ទឹកសុទ្ធ' },
+          { id: 'tx_3', type: 'expense', amountUsd: 95.00, originalAmount: 95.00, originalCurrency: 'USD', categoryId: 'cat_exp_1', date: todayStr, note: 'ទិញមី និងស្ករសបន្ថែម' },
+          { id: 'tx_4', type: 'expense', amountUsd: 24.50, originalAmount: 98000, originalCurrency: 'KHR', categoryId: 'cat_exp_2', date: todayStr, note: 'ថ្លៃអគ្គិសនី' }
+        ],
+        debtors: [
+          {
+            id: 'deb_1',
+            name: 'សុខា',
+            phone: '012 345 878',
+            totalUsd: 15.00,
+            paidUsd: 5.00,
+            date: todayStr,
+            note: 'ជំពាក់អង្ករ និងប្រេងឆា',
+            payments: [{ amountUsd: 5.00, date: todayStr }]
+          },
+          {
+            id: 'deb_2',
+            name: 'ចាន់ណា',
+            phone: '096 882 114',
+            totalUsd: 12.50,
+            paidUsd: 0,
+            date: todayStr,
+            note: 'ភេសជ្ជៈ ១កេស',
+            payments: []
+          }
+        ]
+      };
+
+      let state = loadState();
+      let entryForm = {
+        editingId: null,
+        type: 'income',
+        currency: 'USD',
+        selectedCatId: 'cat_inc_1'
+      };
+      let debtorFilter = 'all';
+      let tempCatImage = '';
+      let expenseChartInstance = null;
+
+      function loadState() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return structuredClone(DEFAULT_STATE);
+          const parsed = JSON.parse(raw);
+          return {
+            ...structuredClone(DEFAULT_STATE),
+            ...parsed,
+            settings: { ...DEFAULT_STATE.settings, ...(parsed.settings || {}) }
+          };
+        } catch (e) {
+          return structuredClone(DEFAULT_STATE);
+        }
+      }
+
+      function saveState() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        } catch (e) {
+          showToast('Storage full - consider removing large images');
+        }
+      }
+
+      function t(key) {
+        return (I18N[state.lang] && I18N[state.lang][key]) || I18N.km[key] || key;
+      }
+
+      function formatMoney(usdAmount, forceCurrency) {
+        const curr = forceCurrency || state.currency;
+        const val = Number(usdAmount) || 0;
+        if (curr === 'KHR') {
+          const khr = Math.round(val * (state.settings.exchangeRate || 4000));
+          return khr.toLocaleString('en-US') + ' ៛';
+        }
+        return '$' + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+
+      function formatSubMoney(usdAmount) {
+        const val = Number(usdAmount) || 0;
+        if (state.currency === 'USD') {
+          const khr = Math.round(val * (state.settings.exchangeRate || 4000));
+          return khr.toLocaleString('en-US') + ' ៛';
+        }
+        return '$' + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+
+      function showToast(msg) {
+        const el = document.getElementById('toastEl');
+        el.textContent = msg;
+        el.classList.remove('hidden');
+        clearTimeout(el._timer);
+        el._timer = setTimeout(() => el.classList.add('hidden'), 2800);
+      }
+
+      function setView(viewName) {
+        state.activeView = viewName;
+        ['dashboard', 'add', 'debtors'].forEach(v => {
+          document.getElementById('view-' + v).classList.toggle('hidden', v !== viewName);
+        });
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+          const active = btn.dataset.nav === viewName;
+          btn.className = 'nav-btn px-3.5 py-1.5 rounded-lg text-sm font-semibold transition ' +
+            (active ? 'bg-white text-[#138564] shadow-sm' : 'text-slate-600 hover:text-slate-900');
+        });
+        document.querySelectorAll('.mob-nav-btn').forEach(btn => {
+          const active = btn.dataset.nav === viewName;
+          btn.className = 'mob-nav-btn flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-xs font-semibold ' +
+            (active ? 'text-[#138564]' : 'text-slate-400');
+        });
+        if (viewName === 'dashboard') renderDashboard();
+        if (viewName === 'add') renderAddEntry();
+        if (viewName === 'debtors') renderDebtors();
+      }
+
+      function populateMonthFilter() {
+        const select = document.getElementById('monthFilter');
+        const months = new Set([currentMonthStr]);
+        state.transactions.forEach(tx => {
+          if (tx.date && tx.date.length >= 7) months.add(tx.date.slice(0, 7));
+        });
+        const sorted = Array.from(months).sort().reverse();
+        select.innerHTML = '';
+        const allOpt = document.createElement('option');
+        allOpt.value = 'all';
+        allOpt.textContent = t('all');
+        select.appendChild(allOpt);
+        sorted.forEach(m => {
+          const opt = document.createElement('option');
+          opt.value = m;
+          opt.textContent = m;
+          select.appendChild(opt);
+        });
+        select.value = state.selectedMonth || currentMonthStr;
+      }
+
+      function applyStaticLabels() {
+        document.getElementById('appTitle').textContent = t('appTitle');
+        document.getElementById('dashHeading').textContent = t('dashHeading');
+        document.getElementById('quickSyncLabel').textContent = t('quickSync');
+        document.getElementById('labelNetBalance').textContent = t('netBalance');
+        document.getElementById('labelTotalDebtDash').textContent = t('totalDebtDash');
+        document.getElementById('labelIncome').textContent = t('income');
+        document.getElementById('labelExpense').textContent = t('expense');
+        document.getElementById('labelMonthlyBudget').textContent = t('monthlyBudget');
+        document.getElementById('editBudgetBtn').textContent = t('editBudget');
+        document.getElementById('labelExpenseCatChart').textContent = t('expenseCats');
+        document.getElementById('labelRecentTx').textContent = t('recentTx');
+        document.getElementById('txSearchInput').placeholder = t('searchTxPlaceholder');
+        document.getElementById('labelAmountInput').textContent = t('amount');
+        document.getElementById('labelCategorySelect').textContent = t('category');
+        document.getElementById('labelEditCats').textContent = t('editCats');
+        document.getElementById('labelDateInput').textContent = t('date');
+        document.getElementById('labelNoteInput').textContent = t('note');
+        document.getElementById('entryNoteInput').placeholder = t('notePlaceholder');
+        document.getElementById('saveTxBtn').textContent = t('save');
+        document.getElementById('debtorsHeading').textContent = t('debtorsHeading');
+        document.getElementById('openAddDebtorBtn').textContent = t('addDebtorBtn');
+        document.getElementById('debtorSearchInput').placeholder = t('searchDebtorPlaceholder');
+        document.getElementById('payModalTitle').textContent = t('payModalTitle');
+        document.getElementById('labelPayAsIncome').textContent = t('payAsIncome');
+        document.getElementById('confirmPayBtn').textContent = t('confirmPay');
+        document.getElementById('catModalTitle').textContent = t('catModalTitle');
+        document.getElementById('settingsTitle').textContent = t('settingsTitle');
+        document.getElementById('cancelEditTxBtn').textContent = t('cancelEdit');
+        document.getElementById('rateBadge').textContent = '1$ = ' + Number(state.settings.exchangeRate).toLocaleString() + '៛';
+
+        document.getElementById('langToggleBtn').textContent = state.lang === 'km' ? 'ខ្មែរ | EN' : 'EN | ខ្មែរ';
+        document.getElementById('currencyToggleBtn').textContent = state.currency === 'USD' ? '$ | ៛' : '៛ | $';
+
+        const navLabels = { dashboard: t('navDashboard'), add: t('navAdd'), debtors: t('navDebtors') };
+        document.querySelectorAll('.nav-btn').forEach(b => { b.textContent = navLabels[b.dataset.nav]; });
+        document.querySelectorAll('.mob-nav-btn').forEach(b => {
+          b.querySelector('.mob-nav-label').textContent = navLabels[b.dataset.nav];
+        });
+
+        const debtFilterLabels = { all: t('all'), owing: t('owing'), paid: t('paid') };
+        document.querySelectorAll('.debt-filter-btn').forEach(b => {
+          const active = b.dataset.debtFilter === debtorFilter;
+          b.textContent = debtFilterLabels[b.dataset.debtFilter];
+          b.className = 'debt-filter-btn px-3 py-1 rounded-lg transition ' +
+            (active ? 'bg-[#138564] text-white' : 'text-slate-600 hover:bg-slate-100');
+        });
+
+        const dot = document.getElementById('syncDot');
+        const st = document.getElementById('syncStatusText');
+        if (state.settings.sheetsUrl) {
+          dot.className = 'inline-block w-2 h-2 rounded-full bg-emerald-500';
+          st.textContent = t('syncedCloud');
+        } else {
+          dot.className = 'inline-block w-2 h-2 rounded-full bg-slate-300';
+          st.textContent = t('savedLocal');
+        }
+      }
+
+      function getFilteredTransactions() {
+        const month = state.selectedMonth;
+        const search = (document.getElementById('txSearchInput').value || '').trim().toLowerCase();
+        const typeF = document.getElementById('txTypeFilter').value;
+        return state.transactions
+          .filter(tx => (month === 'all' || (tx.date && tx.date.startsWith(month))))
+          .filter(tx => (typeF === 'all' || tx.type === typeF))
+          .filter(tx => {
+            if (!search) return true;
+            const cat = state.categories.find(c => c.id === tx.categoryId);
+            const catName = cat ? (cat.nameKm + ' ' + cat.nameEn).toLowerCase() : '';
+            return (tx.note || '').toLowerCase().includes(search) || catName.includes(search);
+          })
+          .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+      }
+
+      function renderDashboard() {
+        applyStaticLabels();
+        populateMonthFilter();
+
+        const month = state.selectedMonth;
+        const monthTxs = state.transactions.filter(tx => month === 'all' || (tx.date && tx.date.startsWith(month)));
+        let totalInc = 0, totalExp = 0, incCount = 0, expCount = 0;
+        monthTxs.forEach(tx => {
+          if (tx.type === 'income') { totalInc += Number(tx.amountUsd) || 0; incCount++; }
+          else { totalExp += Number(tx.amountUsd) || 0; expCount++; }
+        });
+        const net = totalInc - totalExp;
+
+        document.getElementById('netBalanceVal').textContent = formatMoney(net);
+        document.getElementById('netBalanceSub').textContent = formatSubMoney(net);
+        document.getElementById('incomeTotalVal').textContent = '+' + formatMoney(totalInc);
+        document.getElementById('incomeTotalSub').textContent = incCount + ' ' + t('txCountSuffix');
+        document.getElementById('expenseTotalVal').textContent = '-' + formatMoney(totalExp);
+        document.getElementById('expenseTotalSub').textContent = expCount + ' ' + t('txCountSuffix');
+
+        const totalReceivables = state.debtors.reduce((sum, d) => sum + Math.max(0, (d.totalUsd || 0) - (d.paidUsd || 0)), 0);
+        document.getElementById('dashDebtTotal').textContent = formatMoney(totalReceivables);
+
+        // Budget Progress
+        const rawBudget = Number(state.settings.monthlyBudgetUsd);
+        const budgetUsd = Number.isFinite(rawBudget) && rawBudget > 0 ? rawBudget : 0;
+        const bar = document.getElementById('budgetProgressBar');
+        if (budgetUsd <= 0) {
+          document.getElementById('budgetRatioText').textContent = formatMoney(totalExp) + ' / ' + (state.lang === 'km' ? 'មិនបានកំណត់' : 'Not set');
+          document.getElementById('budgetPercentText').textContent = '0%';
+          bar.style.width = '0%';
+          bar.className = 'h-full rounded-full transition-all duration-300 bg-slate-300';
+        } else {
+          const pct = Math.min(100, Math.round((totalExp / budgetUsd) * 100));
+          document.getElementById('budgetRatioText').textContent = formatMoney(totalExp) + ' / ' + formatMoney(budgetUsd);
+          document.getElementById('budgetPercentText').textContent = pct + '%';
+          bar.style.width = pct + '%';
+          bar.className = 'h-full rounded-full transition-all duration-300 ' + (pct > 90 ? 'bg-rose-500' : 'bg-[#138564]');
+        }
+
+        // Expense Chart
+        renderExpenseChart(monthTxs.filter(tx => tx.type === 'expense'), totalExp);
+
+        // Transactions List
+        const filtered = getFilteredTransactions();
+        const listEl = document.getElementById('txListContainer');
+        if (!filtered.length) {
+          listEl.innerHTML = '<div class="py-8 text-center text-xs text-slate-400">' + t('noData') + '</div>';
+          return;
+        }
+        listEl.innerHTML = filtered.map(tx => {
+          const cat = state.categories.find(c => c.id === tx.categoryId) || { nameKm: 'ផ្សេងៗ', nameEn: 'Other', emoji: '📌', color: '#64748b', image: '' };
+          const catName = state.lang === 'km' ? cat.nameKm : cat.nameEn;
+          const iconHtml = cat.image
+            ? '<img src="' + cat.image + '" alt="" class="w-9 h-9 rounded-xl object-cover shrink-0 border border-slate-200" />'
+            : '<div class="w-9 h-9 rounded-xl flex items-center justify-center text-base shrink-0" style="background:' + (cat.color || '#138564') + '18">' + (cat.emoji || '📌') + '</div>';
+          const amtSign = tx.type === 'income' ? '+' : '-';
+          const amtColor = tx.type === 'income' ? 'text-emerald-700' : 'text-rose-600';
+
+          return '<div class="py-2.5 flex items-center justify-between gap-2">' +
+            '<div class="flex items-center gap-2.5 min-w-0">' +
+              iconHtml +
+              '<div class="min-w-0">' +
+                '<div class="text-xs sm:text-sm font-bold text-slate-800 truncate">' + escapeHtml(catName) + '</div>' +
+                '<div class="text-[11px] text-slate-500 truncate">' + escapeHtml(tx.note || tx.date) + ' · <span class="num-font">' + tx.date + '</span></div>' +
+              '</div>' +
+            '</div>' +
+            '<div class="flex items-center gap-2 shrink-0">' +
+              '<div class="text-right">' +
+                '<div class="text-xs sm:text-sm font-bold num-font ' + amtColor + '">' + amtSign + formatMoney(tx.amountUsd) + '</div>' +
+                '<div class="text-[10px] text-slate-400 num-font">' + formatSubMoney(tx.amountUsd) + '</div>' +
+              '</div>' +
+              '<button type="button" data-edit-tx="' + tx.id + '" class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 text-xs">✎</button>' +
+              '<button type="button" data-del-tx="' + tx.id + '" class="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 text-xs">🗑</button>' +
+            '</div>' +
+          '</div>';
+        }).join('');
+      }
+
+      function renderExpenseChart(expenseTxs, totalExp) {
+        const grouped = {};
+        expenseTxs.forEach(tx => {
+          grouped[tx.categoryId] = (grouped[tx.categoryId] || 0) + (Number(tx.amountUsd) || 0);
+        });
+        const entries = Object.entries(grouped);
+        document.getElementById('chartTotalTag').textContent = formatMoney(totalExp);
+
+        const labels = [];
+        const data = [];
+        const colors = [];
+        entries.forEach(([catId, sum]) => {
+          const cat = state.categories.find(c => c.id === catId);
+          labels.push(cat ? (state.lang === 'km' ? cat.nameKm : cat.nameEn) : 'Other');
+          data.push(sum);
+          colors.push(cat ? cat.color : '#94a3b8');
+        });
+
+        const legendEl = document.getElementById('chartLegend');
+        if (!entries.length) {
+          legendEl.innerHTML = '<div class="col-span-2 text-center text-slate-400 py-2">' + t('noData') + '</div>';
+        } else {
+          legendEl.innerHTML = entries.map(([catId, sum], idx) => {
+            const pct = totalExp > 0 ? Math.round((sum / totalExp) * 100) : 0;
+            return '<div class="flex items-center justify-between gap-1 px-2 py-1 rounded-lg bg-slate-50">' +
+              '<div class="flex items-center gap-1.5 min-w-0">' +
+                '<span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:' + colors[idx] + '"></span>' +
+                '<span class="truncate text-slate-700">' + escapeHtml(labels[idx]) + '</span>' +
+              '</div>' +
+              '<span class="font-bold text-slate-800 num-font">' + pct + '%</span>' +
+            '</div>';
+          }).join('');
+        }
+
+        const ctx = document.getElementById('expenseChart').getContext('2d');
+        if (expenseChartInstance) expenseChartInstance.destroy();
+        expenseChartInstance = new Chart(ctx, {
+          type: 'doughnut',
+          data: {
+            labels: labels.length ? labels : [t('noData')],
+            datasets: [{
+              data: data.length ? data : [1],
+              backgroundColor: colors.length ? colors : ['#e2e8f0'],
+              borderWidth: 2,
+              borderColor: '#ffffff'
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '66%',
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                enabled: data.length > 0,
+                callbacks: {
+                  label: function (context) {
+                    return context.label + ': ' + formatMoney(context.raw);
+                  }
+                }
+              }
+            }
+          }
+        });
+      }
+
+      function renderAddEntry() {
+        applyStaticLabels();
+        document.getElementById('addEntryHeading').textContent = entryForm.editingId ? t('editEntryHeading') : t('addEntryHeading');
+        document.getElementById('cancelEditTxBtn').classList.toggle('hidden', !entryForm.editingId);
+
+        const incBtn = document.getElementById('typeIncomeBtn');
+        const expBtn = document.getElementById('typeExpenseBtn');
+        incBtn.textContent = t('income');
+        expBtn.textContent = t('expense');
+        incBtn.className = 'py-2.5 rounded-lg text-sm font-bold transition ' +
+          (entryForm.type === 'income' ? 'bg-[#138564] text-white shadow-sm' : 'text-slate-600');
+        expBtn.className = 'py-2.5 rounded-lg text-sm font-bold transition ' +
+          (entryForm.type === 'expense' ? 'bg-rose-600 text-white shadow-sm' : 'text-slate-600');
+
+        const usdBtn = document.getElementById('entryUsdBtn');
+        const khrBtn = document.getElementById('entryKhrBtn');
+        usdBtn.className = 'px-2.5 py-0.5 rounded-md transition ' + (entryForm.currency === 'USD' ? 'bg-[#138564] text-white' : 'text-slate-600');
+        khrBtn.className = 'px-2.5 py-0.5 rounded-md transition ' + (entryForm.currency === 'KHR' ? 'bg-[#138564] text-white' : 'text-slate-600');
+        document.getElementById('entryCurrencySymbol').textContent = entryForm.currency === 'USD' ? '$' : '៛';
+
+        if (!document.getElementById('entryDateInput').value) {
+          document.getElementById('entryDateInput').value = todayStr;
+        }
+        updateEntryPreview();
+
+        // Category Grid
+        const cats = state.categories.filter(c => c.type === entryForm.type);
+        if (!cats.some(c => c.id === entryForm.selectedCatId) && cats.length) {
+          entryForm.selectedCatId = cats[0].id;
+        }
+        const grid = document.getElementById('categoryGrid');
+        grid.innerHTML = cats.map(c => {
+          const active = c.id === entryForm.selectedCatId;
+          const name = state.lang === 'km' ? c.nameKm : c.nameEn;
+          const icon = c.image
+            ? '<img src="' + c.image + '" alt="" class="w-9 h-9 rounded-xl object-cover mx-auto" />'
+            : '<div class="w-9 h-9 rounded-xl flex items-center justify-center text-lg mx-auto" style="background:' + (c.color || '#138564') + '18">' + (c.emoji || '📌') + '</div>';
+          return '<button type="button" data-pick-cat="' + c.id + '" class="p-2.5 rounded-2xl border text-center transition ' +
+            (active ? 'border-[#138564] bg-emerald-50/70 ring-2 ring-[#138564]/20' : 'border-slate-200 bg-white hover:bg-slate-50') + '">' +
+            icon +
+            '<div class="text-[11px] font-semibold text-slate-800 mt-1.5 line-clamp-2">' + escapeHtml(name) + '</div>' +
+          '</button>';
+        }).join('') +
+        '<button type="button" id="gridAddCatBtn" class="p-2.5 rounded-2xl border border-dashed border-slate-300 bg-slate-50 hover:bg-slate-100 text-center flex flex-col items-center justify-center">' +
+          '<div class="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-lg text-slate-500">+</div>' +
+          '<div class="text-[11px] font-semibold text-slate-600 mt-1.5">' + t('addMore') + '</div>' +
+        '</button>';
+
+        const addCatBtn = document.getElementById('gridAddCatBtn');
+        if (addCatBtn) addCatBtn.addEventListener('click', () => openCategoryModal(entryForm.type));
+      }
+
+      function updateEntryPreview() {
+        const raw = parseFloat(document.getElementById('entryAmountInput').value) || 0;
+        const rate = state.settings.exchangeRate || 4000;
+        if (entryForm.currency === 'USD') {
+          document.getElementById('entryConvertedPreview').textContent = '≈ ' + Math.round(raw * rate).toLocaleString('en-US') + ' ៛';
+        } else {
+          document.getElementById('entryConvertedPreview').textContent = '≈ $' + (raw / rate).toFixed(2);
+        }
+      }
+
+      function renderDebtors() {
+        applyStaticLabels();
+        const q = (document.getElementById('debtorSearchInput').value || '').trim().toLowerCase();
+        const filtered = state.debtors.filter(d => {
+          const rem = Math.max(0, (d.totalUsd || 0) - (d.paidUsd || 0));
+          if (debtorFilter === 'owing' && rem <= 0.005) return false;
+          if (debtorFilter === 'paid' && rem > 0.005) return false;
+          if (!q) return true;
+          return (d.name || '').toLowerCase().includes(q) || (d.phone || '').toLowerCase().includes(q);
+        });
+
+        const totalRem = state.debtors.reduce((s, d) => s + Math.max(0, (d.totalUsd || 0) - (d.paidUsd || 0)), 0);
+        document.getElementById('debtorsSubSummary').textContent = t('remainingLabel') + ': ' + formatMoney(totalRem, 'USD') + ' / ' + formatMoney(totalRem, 'KHR');
+
+        const container = document.getElementById('debtorsListContainer');
+        if (!filtered.length) {
+          container.innerHTML = '<div class="col-span-full py-10 text-center text-xs text-slate-400 card-soft rounded-2xl">' + t('noData') + '</div>';
+          return;
+        }
+        container.innerHTML = filtered.map(d => {
+          const tot = Number(d.totalUsd) || 0;
+          const paid = Number(d.paidUsd) || 0;
+          const rem = Math.max(0, tot - paid);
+          const pct = tot > 0 ? Math.min(100, Math.round((paid / tot) * 100)) : 100;
+          return '<div class="card-soft rounded-2xl p-4 space-y-2.5">' +
+            '<div class="flex items-start justify-between gap-2">' +
+              '<div>' +
+                '<div class="text-sm sm:text-base font-bold text-slate-900">' + escapeHtml(d.name) + '</div>' +
+                '<div class="text-xs text-slate-500 num-font">' + escapeHtml(d.phone || '-') + ' · ' + escapeHtml(d.date || '') + '</div>' +
+              '</div>' +
+              '<div class="flex items-center gap-1">' +
+                (rem > 0.005 ? '<button type="button" data-pay-debtor="' + d.id + '" class="px-2.5 py-1 rounded-lg btn-emerald text-xs font-bold">' + t('payBtn') + '</button>' : '<span class="px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-800 text-[11px] font-bold">✓ ' + t('paid') + '</span>') +
+                '<button type="button" data-edit-debtor="' + d.id + '" class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 text-xs">✎</button>' +
+                '<button type="button" data-del-debtor="' + d.id + '" class="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 text-xs">🗑</button>' +
+              '</div>' +
+            '</div>' +
+            '<div class="text-xs text-slate-600 num-font">' +
+              t('totalLabel') + ': <span class="font-semibold text-slate-800">' + formatMoney(tot) + '</span> | ' +
+              t('paidLabel') + ': <span class="font-semibold text-emerald-700">' + formatMoney(paid) + '</span>' +
+            '</div>' +
+            '<div class="text-sm font-extrabold text-slate-900 num-font">' +
+              t('remainingLabel') + ': ' + formatMoney(rem, 'USD') + ' <span class="text-xs font-semibold text-slate-500">/ ' + formatMoney(rem, 'KHR') + '</span>' +
+            '</div>' +
+            (d.note ? '<div class="text-xs text-slate-500">' + escapeHtml(d.note) + '</div>' : '') +
+            '<div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">' +
+              '<div class="h-full bg-[#138564] rounded-full transition-all" style="width:' + pct + '%"></div>' +
+            '</div>' +
+          '</div>';
+        }).join('');
+      }
+
+      // Category Manager
+      function openCategoryModal(defaultType) {
+        document.getElementById('catFormType').value = defaultType || entryForm.type;
+        resetCatForm();
+        renderCatManagerList();
+        document.getElementById('catModal').classList.remove('hidden');
+      }
+
+      function resetCatForm() {
+        document.getElementById('editCatId').value = '';
+        document.getElementById('catFormNameKm').value = '';
+        document.getElementById('catFormNameEn').value = '';
+        document.getElementById('catFormEmoji').value = '🛒';
+        document.getElementById('catFormColor').value = '#138564';
+        tempCatImage = '';
+        document.getElementById('catImagePreviewWrap').classList.add('hidden');
+      }
+
+      function renderCatManagerList() {
+        const list = document.getElementById('catManagerList');
+        list.innerHTML = state.categories.map(c => {
+          const icon = c.image
+            ? '<img src="' + c.image + '" alt="" class="w-8 h-8 rounded-lg object-cover" />'
+            : '<span class="w-8 h-8 rounded-lg flex items-center justify-center text-base" style="background:' + c.color + '20">' + (c.emoji || '📌') + '</span>';
+          return '<div class="py-2 flex items-center justify-between gap-2">' +
+            '<div class="flex items-center gap-2.5 min-w-0">' +
+              icon +
+              '<div class="min-w-0">' +
+                '<div class="text-xs font-bold text-slate-800 truncate">' + escapeHtml(c.nameKm) + ' / ' + escapeHtml(c.nameEn) + '</div>' +
+                '<div class="text-[10px] text-slate-400 uppercase">' + c.type + '</div>' +
+              '</div>' +
+            '</div>' +
+            '<div class="flex items-center gap-1">' +
+              '<button type="button" data-edit-cat="' + c.id + '" class="px-2 py-1 rounded bg-slate-100 text-xs font-semibold text-slate-700">✎</button>' +
+              '<button type="button" data-del-cat="' + c.id + '" class="px-2 py-1 rounded bg-rose-50 text-xs font-semibold text-rose-600">🗑</button>' +
+            '</div>' +
+          '</div>';
+        }).join('');
+      }
+
+      // Image compression for custom category photo
+      function handleCategoryImageUpload(file) {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function (ev) {
+          const img = new Image();
+          img.onload = function () {
+            const canvas = document.createElement('canvas');
+            const size = 128;
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            const minDim = Math.min(img.width, img.height);
+            const sx = (img.width - minDim) / 2;
+            const sy = (img.height - minDim) / 2;
+            ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, size, size);
+            tempCatImage = canvas.toDataURL('image/jpeg', 0.8);
+            document.getElementById('catImagePreview').src = tempCatImage;
+            document.getElementById('catImagePreviewWrap').classList.remove('hidden');
+          };
+          img.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+
+      // Export Excel & CSV
+      function exportTransactions(format) {
+        const rows = getFilteredTransactions().map(tx => {
+          const cat = state.categories.find(c => c.id === tx.categoryId);
+          const rate = state.settings.exchangeRate || 4000;
+          return {
+            Date: tx.date,
+            Type: tx.type === 'income' ? 'Income / ចំណូល' : 'Expense / ចំណាយ',
+            Category_KM: cat ? cat.nameKm : '',
+            Category_EN: cat ? cat.nameEn : '',
+            Amount_USD: Number((tx.amountUsd || 0).toFixed(2)),
+            Amount_KHR: Math.round((tx.amountUsd || 0) * rate),
+            Note: tx.note || ''
+          };
+        });
+        if (!rows.length) { showToast(t('noData')); return; }
+
+        if (format === 'xlsx' && typeof XLSX !== 'undefined') {
+          const wb = XLSX.utils.book_new();
+          const wsTx = XLSX.utils.json_to_sheet(rows);
+          XLSX.utils.book_append_sheet(wb, wsTx, 'Transactions');
+
+          const debtRows = state.debtors.map(d => ({
+            Name: d.name,
+            Phone: d.phone,
+            Total_USD: Number((d.totalUsd || 0).toFixed(2)),
+            Paid_USD: Number((d.paidUsd || 0).toFixed(2)),
+            Remaining_USD: Number(Math.max(0, (d.totalUsd || 0) - (d.paidUsd || 0)).toFixed(2)),
+            Date: d.date,
+            Note: d.note || ''
+          }));
+          if (debtRows.length) {
+            const wsDebt = XLSX.utils.json_to_sheet(debtRows);
+            XLSX.utils.book_append_sheet(wb, wsDebt, 'Debtors');
+          }
+          XLSX.writeFile(wb, 'Grocery_Shop_' + todayStr + '.xlsx');
+          return;
+        }
+
+        // CSV with UTF-8 BOM for Khmer support
+        const headers = Object.keys(rows[0]);
+        const csvLines = [headers.join(',')].concat(
+          rows.map(r => headers.map(h => '"' + String(r[h]).replace(/"/g, '""') + '"').join(','))
+        );
+        const blob = new Blob(['\uFEFF' + csvLines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'Grocery_Shop_' + todayStr + '.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      // Google Sheets Sync
+      async function syncToGoogleSheets(silent) {
+        const url = (state.settings.sheetsUrl || '').trim();
+        if (!url || !url.startsWith('https://')) {
+          if (!silent) showToast(t('toastNeedUrl'));
+          return;
+        }
+        document.getElementById('syncStatusText').textContent = t('syncing');
+        try {
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({
+              transactions: state.transactions,
+              debtors: state.debtors,
+              categories: state.categories,
+              settings: {
+                exchangeRate: state.settings.exchangeRate,
+                monthlyBudgetUsd: state.settings.monthlyBudgetUsd
+              }
+            })
+          });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          document.getElementById('syncStatusText').textContent = t('syncedCloud');
+          if (!silent) showToast(t('toastSyncOk'));
+        } catch (err) {
+          document.getElementById('syncStatusText').textContent = t('savedLocal');
+          if (!silent) showToast(t('toastSyncErr'));
+        }
+      }
+
+      async function pullFromGoogleSheets() {
+        const url = (state.settings.sheetsUrl || '').trim();
+        if (!url || !url.startsWith('https://')) {
+          showToast(t('toastNeedUrl'));
+          return;
+        }
+        document.getElementById('syncStatusText').textContent = t('syncing');
+        try {
+          const res = await fetch(url);
+          const json = await res.json();
+          if (!json || !json.ok || !json.data) throw new Error('Invalid');
+          const d = json.data;
+          if (Array.isArray(d.transactions) && d.transactions.length) {
+            state.transactions = d.transactions.map(x => ({ ...x, amountUsd: Number(x.amountUsd) || 0 }));
+          }
+          if (Array.isArray(d.categories) && d.categories.length) {
+            state.categories = d.categories;
+          }
+          if (Array.isArray(d.debtors) && d.debtors.length) {
+            state.debtors = d.debtors.map(x => {
+              let pays = [];
+              try { pays = JSON.parse(x.paymentsJson || '[]'); } catch (e) {}
+              return { ...x, totalUsd: Number(x.totalUsd) || 0, paidUsd: Number(x.paidUsd) || 0, payments: pays };
+            });
+          }
+          saveState();
+          setView(state.activeView);
+          showToast(t('toastSyncOk'));
+        } catch (err) {
+          showToast(t('toastSyncErr'));
+        }
+      }
+
+      function escapeHtml(str) {
+        return String(str || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      // Event Listeners
+      document.querySelectorAll('[data-nav]').forEach(btn => {
+        btn.addEventListener('click', () => setView(btn.dataset.nav));
+      });
+
+      document.getElementById('langToggleBtn').addEventListener('click', () => {
+        state.lang = state.lang === 'km' ? 'en' : 'km';
+        saveState();
+        setView(state.activeView);
+      });
+
+      document.getElementById('currencyToggleBtn').addEventListener('click', () => {
+        state.currency = state.currency === 'USD' ? 'KHR' : 'USD';
+        saveState();
+        setView(state.activeView);
+      });
+
+      document.getElementById('monthFilter').addEventListener('change', (e) => {
+        state.selectedMonth = e.target.value;
+        saveState();
+        renderDashboard();
+      });
+
+      document.getElementById('txSearchInput').addEventListener('input', renderDashboard);
+      document.getElementById('txTypeFilter').addEventListener('change', renderDashboard);
+      document.getElementById('exportExcelBtn').addEventListener('click', () => exportTransactions('xlsx'));
+      document.getElementById('exportCsvBtn').addEventListener('click', () => exportTransactions('csv'));
+      document.getElementById('quickSyncBtn').addEventListener('click', () => syncToGoogleSheets(false));
+
+      document.getElementById('editBudgetBtn').addEventListener('click', () => {
+        document.getElementById('openSettingsBtn').click();
+      });
+
+      // Add Entry Listeners
+      document.getElementById('typeIncomeBtn').addEventListener('click', () => {
+        entryForm.type = 'income';
+        renderAddEntry();
+      });
+      document.getElementById('typeExpenseBtn').addEventListener('click', () => {
+        entryForm.type = 'expense';
+        renderAddEntry();
+      });
+      document.getElementById('entryUsdBtn').addEventListener('click', () => {
+        entryForm.currency = 'USD';
+        renderAddEntry();
+      });
+      document.getElementById('entryKhrBtn').addEventListener('click', () => {
+        entryForm.currency = 'KHR';
+        renderAddEntry();
+      });
+      document.getElementById('entryAmountInput').addEventListener('input', updateEntryPreview);
+
+      document.getElementById('categoryGrid').addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-pick-cat]');
+        if (!btn) return;
+        entryForm.selectedCatId = btn.dataset.pickCat;
+        renderAddEntry();
+      });
+
+      document.getElementById('cancelEditTxBtn').addEventListener('click', () => {
+        entryForm.editingId = null;
+        document.getElementById('entryAmountInput').value = '';
+        document.getElementById('entryNoteInput').value = '';
+        renderAddEntry();
+      });
+
+      document.getElementById('saveTxBtn').addEventListener('click', () => {
+        const rawAmt = parseFloat(document.getElementById('entryAmountInput').value);
+        if (!rawAmt || rawAmt <= 0) { showToast(t('toastInvalidAmt')); return; }
+        const rate = state.settings.exchangeRate || 4000;
+        const amountUsd = entryForm.currency === 'USD' ? rawAmt : rawAmt / rate;
+        const dateVal = document.getElementById('entryDateInput').value || todayStr;
+        const noteVal = document.getElementById('entryNoteInput').value.trim();
+
+        if (entryForm.editingId) {
+          const idx = state.transactions.findIndex(x => x.id === entryForm.editingId);
+          if (idx > -1) {
+            state.transactions[idx] = {
+              ...state.transactions[idx],
+              type: entryForm.type,
+              amountUsd: amountUsd,
+              originalAmount: rawAmt,
+              originalCurrency: entryForm.currency,
+              categoryId: entryForm.selectedCatId,
+              date: dateVal,
+              note: noteVal
+            };
+          }
+          entryForm.editingId = null;
+        } else {
+          state.transactions.unshift({
+            id: 'tx_' + Date.now(),
+            type: entryForm.type,
+            amountUsd: amountUsd,
+            originalAmount: rawAmt,
+            originalCurrency: entryForm.currency,
+            categoryId: entryForm.selectedCatId,
+            date: dateVal,
+            note: noteVal
+          });
+        }
+        document.getElementById('entryAmountInput').value = '';
+        document.getElementById('entryNoteInput').value = '';
+        saveState();
+        if (state.settings.autoSync) syncToGoogleSheets(true);
+        showToast(t('toastSaved'));
+        setView('dashboard');
+      });
+
+      // Transaction list edit/delete delegation
+      document.getElementById('txListContainer').addEventListener('click', (e) => {
+        const editBtn = e.target.closest('[data-edit-tx]');
+        const delBtn = e.target.closest('[data-del-tx]');
+        if (editBtn) {
+          const tx = state.transactions.find(x => x.id === editBtn.dataset.editTx);
+          if (!tx) return;
+          entryForm.editingId = tx.id;
+          entryForm.type = tx.type;
+          entryForm.currency = tx.originalCurrency || 'USD';
+          entryForm.selectedCatId = tx.categoryId;
+          document.getElementById('entryAmountInput').value = tx.originalAmount || tx.amountUsd;
+          document.getElementById('entryDateInput').value = tx.date || todayStr;
+          document.getElementById('entryNoteInput').value = tx.note || '';
+          setView('add');
+        } else if (delBtn) {
+          state.transactions = state.transactions.filter(x => x.id !== delBtn.dataset.delTx);
+          saveState();
+          if (state.settings.autoSync) syncToGoogleSheets(true);
+          showToast(t('toastDeleted'));
+          renderDashboard();
+        }
+      });
+
+      // Category Manager Listeners
+      document.getElementById('openCatManagerBtn').addEventListener('click', () => openCategoryModal(entryForm.type));
+      document.getElementById('catFormImageInput').addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) handleCategoryImageUpload(e.target.files[0]);
+      });
+      document.getElementById('clearCatImageBtn').addEventListener('click', () => {
+        tempCatImage = '';
+        document.getElementById('catImagePreviewWrap').classList.add('hidden');
+      });
+      document.getElementById('resetCatFormBtn').addEventListener('click', resetCatForm);
+
+      document.getElementById('saveCatBtn').addEventListener('click', () => {
+        const id = document.getElementById('editCatId').value;
+        const type = document.getElementById('catFormType').value;
+        const nameKm = document.getElementById('catFormNameKm').value.trim() || 'ប្រភេទថ្មី';
+        const nameEn = document.getElementById('catFormNameEn').value.trim() || nameKm;
+        const emoji = document.getElementById('catFormEmoji').value.trim() || '📌';
+        const color = document.getElementById('catFormColor').value || '#138564';
+
+        if (id) {
+          const idx = state.categories.findIndex(c => c.id === id);
+          if (idx > -1) {
+            state.categories[idx] = { ...state.categories[idx], type, nameKm, nameEn, emoji, color, image: tempCatImage };
+          }
+        } else {
+          state.categories.push({ id: 'cat_' + Date.now(), type, nameKm, nameEn, emoji, color, image: tempCatImage });
+        }
+        saveState();
+        resetCatForm();
+        renderCatManagerList();
+        if (state.activeView === 'add') renderAddEntry();
+        showToast(t('toastSaved'));
+      });
+
+      document.getElementById('catManagerList').addEventListener('click', (e) => {
+        const editBtn = e.target.closest('[data-edit-cat]');
+        const delBtn = e.target.closest('[data-del-cat]');
+        if (editBtn) {
+          const c = state.categories.find(x => x.id === editBtn.dataset.editCat);
+          if (!c) return;
+          document.getElementById('editCatId').value = c.id;
+          document.getElementById('catFormType').value = c.type;
+          document.getElementById('catFormNameKm').value = c.nameKm;
+          document.getElementById('catFormNameEn').value = c.nameEn;
+          document.getElementById('catFormEmoji').value = c.emoji || '📌';
+          document.getElementById('catFormColor').value = c.color || '#138564';
+          tempCatImage = c.image || '';
+          if (tempCatImage) {
+            document.getElementById('catImagePreview').src = tempCatImage;
+            document.getElementById('catImagePreviewWrap').classList.remove('hidden');
+          } else {
+            document.getElementById('catImagePreviewWrap').classList.add('hidden');
+          }
+        } else if (delBtn) {
+          state.categories = state.categories.filter(x => x.id !== delBtn.dataset.delCat);
+          saveState();
+          renderCatManagerList();
+          if (state.activeView === 'add') renderAddEntry();
+        }
+      });
+
+      // Debtors Listeners
+      document.getElementById('debtorSearchInput').addEventListener('input', renderDebtors);
+      document.querySelectorAll('.debt-filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          debtorFilter = btn.dataset.debtFilter;
+          renderDebtors();
+        });
+      });
+
+      document.getElementById('openAddDebtorBtn').addEventListener('click', () => {
+        document.getElementById('editDebtorId').value = '';
+        document.getElementById('debtorNameInput').value = '';
+        document.getElementById('debtorPhoneInput').value = '';
+        document.getElementById('debtorAmountInput').value = '';
+        document.getElementById('debtorCurrSelect').value = state.currency;
+        document.getElementById('debtorDateInput').value = todayStr;
+        document.getElementById('debtorNoteInput').value = '';
+        document.getElementById('debtorModal').classList.remove('hidden');
+      });
+
+      document.getElementById('saveDebtorBtn').addEventListener('click', () => {
+        const id = document.getElementById('editDebtorId').value;
+        const name = document.getElementById('debtorNameInput').value.trim();
+        const phone = document.getElementById('debtorPhoneInput').value.trim();
+        const rawAmt = parseFloat(document.getElementById('debtorAmountInput').value);
+        const curr = document.getElementById('debtorCurrSelect').value;
+        const date = document.getElementById('debtorDateInput').value || todayStr;
+        const note = document.getElementById('debtorNoteInput').value.trim();
+        if (!name || !rawAmt || rawAmt <= 0) { showToast(t('toastInvalidAmt')); return; }
+
+        const rate = state.settings.exchangeRate || 4000;
+        const totalUsd = curr === 'USD' ? rawAmt : rawAmt / rate;
+
+        if (id) {
+          const idx = state.debtors.findIndex(d => d.id === id);
+          if (idx > -1) state.debtors[idx] = { ...state.debtors[idx], name, phone, totalUsd, date, note };
+        } else {
+          state.debtors.unshift({ id: 'deb_' + Date.now(), name, phone, totalUsd, paidUsd: 0, date, note, payments: [] });
+        }
+        saveState();
+        if (state.settings.autoSync) syncToGoogleSheets(true);
+        document.getElementById('debtorModal').classList.add('hidden');
+        renderDebtors();
+        showToast(t('toastSaved'));
+      });
+
+      document.getElementById('debtorsListContainer').addEventListener('click', (e) => {
+        const payBtn = e.target.closest('[data-pay-debtor]');
+        const editBtn = e.target.closest('[data-edit-debtor]');
+        const delBtn = e.target.closest('[data-del-debtor]');
+        if (payBtn) {
+          const d = state.debtors.find(x => x.id === payBtn.dataset.payDebtor);
+          if (!d) return;
+          const rem = Math.max(0, (d.totalUsd || 0) - (d.paidUsd || 0));
+          document.getElementById('payDebtorId').value = d.id;
+          document.getElementById('payDebtorSummary').textContent = d.name + ' (' + t('remainingLabel') + ': ' + formatMoney(rem) + ')';
+          document.getElementById('payAmountInput').value = state.currency === 'USD' ? rem.toFixed(2) : Math.round(rem * (state.settings.exchangeRate || 4000));
+          document.getElementById('payCurrSelect').value = state.currency;
+          document.getElementById('payDateInput').value = todayStr;
+          document.getElementById('payModal').classList.remove('hidden');
+        } else if (editBtn) {
+          const d = state.debtors.find(x => x.id === editBtn.dataset.editDebtor);
+          if (!d) return;
+          document.getElementById('editDebtorId').value = d.id;
+          document.getElementById('debtorNameInput').value = d.name;
+          document.getElementById('debtorPhoneInput').value = d.phone || '';
+          document.getElementById('debtorAmountInput').value = (d.totalUsd || 0).toFixed(2);
+          document.getElementById('debtorCurrSelect').value = 'USD';
+          document.getElementById('debtorDateInput').value = d.date || todayStr;
+          document.getElementById('debtorNoteInput').value = d.note || '';
+          document.getElementById('debtorModal').classList.remove('hidden');
+        } else if (delBtn) {
+          state.debtors = state.debtors.filter(x => x.id !== delBtn.dataset.delDebtor);
+          saveState();
+          if (state.settings.autoSync) syncToGoogleSheets(true);
+          renderDebtors();
+          showToast(t('toastDeleted'));
+        }
+      });
+
+      document.getElementById('confirmPayBtn').addEventListener('click', () => {
+        const id = document.getElementById('payDebtorId').value;
+        const rawAmt = parseFloat(document.getElementById('payAmountInput').value);
+        const curr = document.getElementById('payCurrSelect').value;
+        const date = document.getElementById('payDateInput').value || todayStr;
+        const asIncome = document.getElementById('payAsIncomeCheck').checked;
+        if (!rawAmt || rawAmt <= 0) { showToast(t('toastInvalidAmt')); return; }
+
+        const rate = state.settings.exchangeRate || 4000;
+        const payUsd = curr === 'USD' ? rawAmt : rawAmt / rate;
+        const d = state.debtors.find(x => x.id === id);
+        if (!d) return;
+
+        d.paidUsd = (Number(d.paidUsd) || 0) + payUsd;
+        d.payments = d.payments || [];
+        d.payments.push({ amountUsd: payUsd, date: date });
+
+        if (asIncome) {
+          const debtCat = state.categories.find(c => c.type === 'income' && c.id === 'cat_inc_3') || state.categories.find(c => c.type === 'income');
+          state.transactions.unshift({
+            id: 'tx_' + Date.now(),
+            type: 'income',
+            amountUsd: payUsd,
+            originalAmount: rawAmt,
+            originalCurrency: curr,
+            categoryId: debtCat ? debtCat.id : 'cat_inc_1',
+            date: date,
+            note: d.name + ' - ' + t('payModalTitle')
+          });
+        }
+        saveState();
+        if (state.settings.autoSync) syncToGoogleSheets(true);
+        document.getElementById('payModal').classList.add('hidden');
+        renderDebtors();
+        showToast(t('toastSaved'));
+      });
+
+      // Settings Modal
+      document.getElementById('openSettingsBtn').addEventListener('click', () => {
+        document.getElementById('settingRateInput').value = state.settings.exchangeRate;
+        document.getElementById('settingBudgetInput').value = state.settings.monthlyBudgetUsd;
+        document.getElementById('settingSheetsUrlInput').value = state.settings.sheetsUrl || '';
+        document.getElementById('settingAutoSyncCheck').checked = !!state.settings.autoSync;
+        document.getElementById('settingsModal').classList.remove('hidden');
+      });
+
+      document.getElementById('saveSettingsBtn').addEventListener('click', () => {
+        state.settings.exchangeRate = Math.max(100, Number(document.getElementById('settingRateInput').value) || 4000);
+        const budgetRawStr = (document.getElementById('settingBudgetInput').value || '').trim();
+        const budgetParsed = budgetRawStr === '' ? 0 : Number(budgetRawStr);
+        state.settings.monthlyBudgetUsd = Number.isFinite(budgetParsed) && budgetParsed > 0 ? budgetParsed : 0;
+        state.settings.sheetsUrl = (document.getElementById('settingSheetsUrlInput').value || '').trim();
+        state.settings.autoSync = document.getElementById('settingAutoSyncCheck').checked;
+        saveState();
+        document.getElementById('settingsModal').classList.add('hidden');
+        setView(state.activeView);
+        showToast(t('toastSaved'));
+      });
+
+      document.getElementById('pushSheetsBtn').addEventListener('click', () => {
+        state.settings.sheetsUrl = (document.getElementById('settingSheetsUrlInput').value || '').trim();
+        saveState();
+        syncToGoogleSheets(false);
+      });
+      document.getElementById('pullSheetsBtn').addEventListener('click', () => {
+        state.settings.sheetsUrl = (document.getElementById('settingSheetsUrlInput').value || '').trim();
+        saveState();
+        pullFromGoogleSheets();
+      });
+
+      document.getElementById('copyAppsScriptBtn').addEventListener('click', () => {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(APPS_SCRIPT_CODE).then(() => showToast(t('toastCopied'))).catch(fallbackCopy);
+        } else {
+          fallbackCopy();
+        }
+        function fallbackCopy() {
+          const ta = document.createElement('textarea');
+          ta.value = APPS_SCRIPT_CODE;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+          showToast(t('toastCopied'));
+        }
+      });
+
+      document.getElementById('exportJsonBtn').addEventListener('click', () => {
+        const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'Grocery_Backup_' + todayStr + '.json';
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+
+      document.getElementById('importJsonInput').addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function (ev) {
+          try {
+            const parsed = JSON.parse(ev.target.result);
+            if (parsed && parsed.transactions) {
+              state = { ...structuredClone(DEFAULT_STATE), ...parsed };
+              saveState();
+              setView(state.activeView);
+              showToast(t('toastSaved'));
+            }
+          } catch (err) {
+            showToast('Invalid JSON');
+          }
+        };
+        reader.readAsText(file);
+      });
+
+      // Close Modals
+      document.querySelectorAll('[data-close-modal]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.getElementById(btn.dataset.closeModal).classList.add('hidden');
+        });
+      });
+
+      // Init
+      setView('dashboard');
+    })();
+  </script>
+</body>
+</html>
