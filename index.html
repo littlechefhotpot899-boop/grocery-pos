@@ -732,9 +732,9 @@ function writeTab(ss, name, headers, rows) {
         selectedMonth: currentMonthStr,
         settings: {
           exchangeRate: 4000,
-          monthlyBudgetUsd: 1800,
-          sheetsUrl: '',
-          autoSync: false
+          monthlyBudgetUsd: 0,
+          sheetsUrl: 'https://script.google.com/macros/s/AKfycbyDiY1_DkiqHVpWQLo-hiY20ppEfvqWm6zgtX8ERiyXsDd-O9CY8XzV_s3c4myCwubA/exec',
+          autoSync: true
         },
         categories: [
           { id: 'cat_inc_1', type: 'income', nameKm: 'លក់ចាប់ហួយ', nameEn: 'Grocery Sales', emoji: '🛒', color: '#138564', image: '' },
@@ -746,37 +746,15 @@ function writeTab(ss, name, headers, rows) {
           { id: 'cat_exp_3', type: 'expense', nameKm: 'ដឹកជញ្ជូន', nameEn: 'Delivery', emoji: '🛵', color: '#8b5cf6', image: '' },
           { id: 'cat_exp_4', type: 'expense', nameKm: 'ចំណាយផ្សេងៗ', nameEn: 'Other Expense', emoji: '🧾', color: '#ef4444', image: '' }
         ],
-        transactions: [
-          { id: 'tx_1', type: 'income', amountUsd: 185.50, originalAmount: 185.50, originalCurrency: 'USD', categoryId: 'cat_inc_1', date: todayStr, note: 'ចំណូលលក់ប្រចាំថ្ងៃ' },
-          { id: 'tx_2', type: 'income', amountUsd: 62.00, originalAmount: 248000, originalCurrency: 'KHR', categoryId: 'cat_inc_2', date: todayStr, note: 'លក់ភេសជ្ជៈ & ទឹកសុទ្ធ' },
-          { id: 'tx_3', type: 'expense', amountUsd: 95.00, originalAmount: 95.00, originalCurrency: 'USD', categoryId: 'cat_exp_1', date: todayStr, note: 'ទិញមី និងស្ករសបន្ថែម' },
-          { id: 'tx_4', type: 'expense', amountUsd: 24.50, originalAmount: 98000, originalCurrency: 'KHR', categoryId: 'cat_exp_2', date: todayStr, note: 'ថ្លៃអគ្គិសនី' }
-        ],
-        debtors: [
-          {
-            id: 'deb_1',
-            name: 'សុខា',
-            phone: '012 345 878',
-            totalUsd: 15.00,
-            paidUsd: 5.00,
-            date: todayStr,
-            note: 'ជំពាក់អង្ករ និងប្រេងឆា',
-            payments: [{ amountUsd: 5.00, date: todayStr }]
-          },
-          {
-            id: 'deb_2',
-            name: 'ចាន់ណា',
-            phone: '096 882 114',
-            totalUsd: 12.50,
-            paidUsd: 0,
-            date: todayStr,
-            note: 'ភេសជ្ជៈ ១កេស',
-            payments: []
-          }
-        ]
+        transactions: [],
+        debtors: []
       };
 
       let state = loadState();
+      if (!state.settings.sheetsUrl) {
+        state.settings.sheetsUrl = DEFAULT_STATE.settings.sheetsUrl;
+        state.settings.autoSync = true;
+      }
       let entryForm = {
         editingId: null,
         type: 'income',
@@ -1364,10 +1342,24 @@ function writeTab(ss, name, headers, rows) {
         }
       }
 
-      async function pullFromGoogleSheets() {
+      function normalizeSheetDate(val) {
+        const str = String(val || '').trim();
+        if (!str) return todayStr;
+        if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+        const dt = new Date(str);
+        if (!isNaN(dt.getTime())) {
+          const y = dt.getFullYear();
+          const m = String(dt.getMonth() + 1).padStart(2, '0');
+          const day = String(dt.getDate()).padStart(2, '0');
+          return y + '-' + m + '-' + day;
+        }
+        return str.slice(0, 10);
+      }
+
+      async function pullFromGoogleSheets(silent) {
         const url = (state.settings.sheetsUrl || '').trim();
         if (!url || !url.startsWith('https://')) {
-          showToast(t('toastNeedUrl'));
+          if (!silent) showToast(t('toastNeedUrl'));
           return;
         }
         document.getElementById('syncStatusText').textContent = t('syncing');
@@ -1376,24 +1368,41 @@ function writeTab(ss, name, headers, rows) {
           const json = await res.json();
           if (!json || !json.ok || !json.data) throw new Error('Invalid');
           const d = json.data;
-          if (Array.isArray(d.transactions) && d.transactions.length) {
-            state.transactions = d.transactions.map(x => ({ ...x, amountUsd: Number(x.amountUsd) || 0 }));
+          if (Array.isArray(d.transactions)) {
+            state.transactions = d.transactions.map(x => ({
+              ...x,
+              amountUsd: Number(x.amountUsd) || 0,
+              date: normalizeSheetDate(x.date)
+            }));
           }
           if (Array.isArray(d.categories) && d.categories.length) {
             state.categories = d.categories;
           }
-          if (Array.isArray(d.debtors) && d.debtors.length) {
+          if (Array.isArray(d.debtors)) {
             state.debtors = d.debtors.map(x => {
               let pays = [];
               try { pays = JSON.parse(x.paymentsJson || '[]'); } catch (e) {}
-              return { ...x, totalUsd: Number(x.totalUsd) || 0, paidUsd: Number(x.paidUsd) || 0, payments: pays };
+              return {
+                ...x,
+                totalUsd: Number(x.totalUsd) || 0,
+                paidUsd: Number(x.paidUsd) || 0,
+                date: normalizeSheetDate(x.date),
+                payments: pays
+              };
+            });
+          }
+          if (Array.isArray(d.settings)) {
+            d.settings.forEach(s => {
+              if (s.key === 'exchangeRate' && Number(s.value) > 0) state.settings.exchangeRate = Number(s.value);
+              if (s.key === 'monthlyBudgetUsd' && s.value !== '') state.settings.monthlyBudgetUsd = Number(s.value) || 0;
             });
           }
           saveState();
           setView(state.activeView);
-          showToast(t('toastSyncOk'));
+          if (!silent) showToast(t('toastSyncOk'));
         } catch (err) {
-          showToast(t('toastSyncErr'));
+          document.getElementById('syncStatusText').textContent = t('savedLocal');
+          if (!silent) showToast(t('toastSyncErr'));
         }
       }
 
@@ -1805,6 +1814,9 @@ function writeTab(ss, name, headers, rows) {
 
       // Init
       setView('dashboard');
+      if (state.settings.sheetsUrl && state.settings.autoSync) {
+        pullFromGoogleSheets(true);
+      }
     })();
   </script>
 </body>
